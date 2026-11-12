@@ -140,8 +140,8 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
         if (alles) schakel(R.string.ken_burns, R.string.ken_burns_uitleg, uitAan, Instellingen.kenBurns) { Instellingen.kenBurns = it }
         item { Keuzes(stringResource(R.string.volgorde), stringResource(R.string.dia_volgorde_uitleg), listOf(stringResource(R.string.op_datum), stringResource(R.string.willekeurig)), if (Instellingen.diaWillekeurig) 1 else 0) { Instellingen.diaWillekeurig = it == 1 } }
         item { Keuzes(stringResource(R.string.videos), stringResource(R.string.dia_videos_uitleg), listOf(stringResource(R.string.afspelen), stringResource(R.string.overslaan)), if (Instellingen.diaVideos) 0 else 1) { Instellingen.diaVideos = it == 0 } }
-        if (alles) item { Keuzes(stringResource(R.string.overgang), stringResource(R.string.overgang_uitleg), listOf(stringResource(R.string.vervagen), stringResource(R.string.schuiven)), if (Instellingen.diaSchuiven) 1 else 0) { Instellingen.diaSchuiven = it == 1 } }
-        if (alles) item { Keuzes(stringResource(R.string.dia_beeld), stringResource(R.string.dia_beeld_uitleg), DiaBeeld.entries.map { stringResource(it.label) }, Instellingen.diaBeeld.ordinal) { Instellingen.diaBeeld = DiaBeeld.entries[it] } }
+        item { Keuzes(stringResource(R.string.overgang), stringResource(R.string.overgang_uitleg), listOf(stringResource(R.string.vervagen), stringResource(R.string.schuiven)), if (Instellingen.diaSchuiven) 1 else 0) { Instellingen.diaSchuiven = it == 1 } }
+        schakel(R.string.dia_ring, R.string.dia_ring_uitleg, uitAan, Instellingen.diaRing) { Instellingen.diaRing = it }
 
         // ---- Screensaver (item-index dreamItem() = de groepskop; de volgorde hierboven niet veranderen zonder die aan te passen) ----
         if (SCREENSAVER_AAN) {
@@ -184,8 +184,15 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
         groep(R.string.groep_bekijken)
         item { Keuzes(stringResource(R.string.landkaart), stringResource(R.string.landkaart_uitleg), KaartMaat.entries.map { stringResource(it.label) }, Instellingen.viewerKaart.ordinal) { Instellingen.viewerKaart = KaartMaat.entries[it] } }
         item {
+            val uit = stringResource(R.string.uit)
             val altijd = stringResource(R.string.altijd_tonen)
-            val labels = Instellingen.BALK_TIJDEN.map { if (it == 0) altijd else stringResource(R.string.seconden_s, (it / 1000.0).let { s -> if (s % 1 == 0.0) "%.0f".format(Taal.locale, s) else "%.1f".format(Taal.locale, s) }) }
+            val labels = Instellingen.BALK_TIJDEN.map {
+                when (it) {
+                    -1 -> uit
+                    0 -> altijd
+                    else -> stringResource(R.string.seconden_s, (it / 1000.0).let { s -> if (s % 1 == 0.0) "%.0f".format(Taal.locale, s) else "%.1f".format(Taal.locale, s) })
+                }
+            }
             Keuzes(stringResource(R.string.datum_plaats), stringResource(R.string.datum_plaats_uitleg), labels, Instellingen.BALK_TIJDEN.indexOf(Instellingen.balkMs).coerceAtLeast(0)) { Instellingen.balkMs = Instellingen.BALK_TIJDEN[it] }
         }
         if (alles) item { Keuzes(stringResource(R.string.teller), stringResource(R.string.teller_uitleg, Taal.getal(12345)), uitAan, if (Instellingen.teller) 1 else 0) { Instellingen.teller = it == 1 } }
@@ -298,7 +305,7 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
 }
 
 /** Item-index van de groepskop "Screensaver" in de lijst: kop + regel Basis/Alle + groep Diashow (1 + 3 of 6 regels). */
-private fun dreamItem(alles: Boolean) = 3 + if (alles) 6 else 3
+private fun dreamItem(alles: Boolean) = 3 + if (alles) 6 else 5
 /** Screensaver-groep in de instellingen tonen (sinds 2.2; false verbergt de groep weer, de DreamService blijft bestaan). */
 const val SCREENSAVER_AAN = true
 

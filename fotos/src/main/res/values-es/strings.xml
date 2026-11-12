@@ -510,11 +510,8 @@
     <string name="mappen_geen_recht_uitleg">A la clave API le falta el permiso folder.read.</string>
     <string name="mappen_niet_geladen">No se pudieron cargar las carpetas</string>
     <string name="map_leeg">Esta carpeta está vacía</string>
-    <string name="dia_beeld">Durante la presentación</string>
-    <string name="dia_beeld_uitleg">Qué se muestra sobre la foto durante la presentación; al pausar vuelve la información</string>
-    <string name="dia_beeld_alles">Todo</string>
-    <string name="dia_beeld_zonder_ring">Sin anillo</string>
-    <string name="dia_beeld_alleen_foto">Solo la foto</string>
+    <string name="dia_ring">Anillo de progreso</string>
+    <string name="dia_ring_uitleg">Anillo arriba a la derecha que se llena hasta la siguiente foto</string>
     <string name="dream_ring">Anillo de progreso</string>
     <string name="dream_ring_uitleg">Pequeño anillo abajo a la izquierda que se llena hasta la siguiente foto</string>
     <string name="album_naam">Nombre del álbum</string>

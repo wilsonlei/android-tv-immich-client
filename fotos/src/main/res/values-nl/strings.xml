@@ -504,11 +504,8 @@
     <string name="mappen_geen_recht_uitleg">De API-sleutel mist het recht folder.read.</string>
     <string name="mappen_niet_geladen">Mappen niet geladen</string>
     <string name="map_leeg">Deze map is leeg</string>
-    <string name="dia_beeld">Tijdens de diashow</string>
-    <string name="dia_beeld_uitleg">Wat er over de foto heen staat terwijl de diashow loopt; pauzeren laat de info weer zien</string>
-    <string name="dia_beeld_alles">Alles</string>
-    <string name="dia_beeld_zonder_ring">Zonder ringetje</string>
-    <string name="dia_beeld_alleen_foto">Alleen de foto</string>
+    <string name="dia_ring">Voortgangsring</string>
+    <string name="dia_ring_uitleg">Ringetje rechtsboven dat volloopt tot de volgende foto</string>
     <string name="dream_ring">Voortgangsringetje</string>
     <string name="dream_ring_uitleg">Ringetje linksonder dat volloopt tot de volgende foto</string>
     <string name="album_naam">Albumnaam</string>
