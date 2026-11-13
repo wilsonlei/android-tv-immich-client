@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.nativeKeyCode
@@ -560,8 +561,9 @@ private fun KaartInhoud(staat: KaartStaat, nav: Nav, inBeeld: Boolean) {
     LaunchedEffect(hintTot) { hint = true; delay((hintTot - System.currentTimeMillis()).coerceAtLeast(0)); hint = false }
     var stijlFout by remember { mutableStateOf(false) }
     var stijlKlaar by remember { mutableStateOf(false) }
+    var kaartKlaar by remember { mutableStateOf(false) }
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(Color(0xFF101418))) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Kleur.achtergrond)) {
         val w = constraints.maxWidth; val h = constraints.maxHeight
         val pr = dicht.density
         // hele wereld over de breedte (polen vallen af); MapLibre: wereld = 512 × 2^zoom logische px
@@ -597,6 +599,7 @@ private fun KaartInhoud(staat: KaartStaat, nav: Nav, inBeeld: Boolean) {
             // minder vulwerk voor de GPU. pixelRatio zó dat de logische maat gelijk blijft aan die van het scherm (dp): tekst
             // even groot, en onze Camera-wiskunde (512·2^zoom·density px per wereld) klopt. Standaard natief.
             val opties = MapLibreMapOptions.createFromAttributes(ctx).camera(camera)
+                .foregroundLoadColor(Kleur.achtergrond.toArgb())
                 .textureMode(kaartTexture).pixelRatio(pr * schaal)
                 .compassEnabled(false).logoEnabled(false).attributionEnabled(false)
             MapView(ctx, opties).apply { isFocusable = false; isFocusableInTouchMode = false }
@@ -618,7 +621,10 @@ private fun KaartInhoud(staat: KaartStaat, nav: Nav, inBeeld: Boolean) {
             levensloop.addObserver(kijker)
             openKaart = mapView
             mapView.addOnDidFailLoadingMapListener { Log.w("Fotos", "kaartstijl: $it"); stijlFout = true }
-            mapView.addOnDidFinishRenderingFrameListener(MapView.OnDidFinishRenderingFrameListener { compleet, _, renderS -> motor.frameKlaar(compleet, renderS) })
+            mapView.addOnDidFinishRenderingFrameListener(MapView.OnDidFinishRenderingFrameListener { compleet, _, renderS ->
+                motor.frameKlaar(compleet, renderS)
+                if (compleet && stijlKlaar && !kaartKlaar) kaartKlaar = true
+            })
             mapView.getMapAsync { map ->
                 map.uiSettings.apply { setAllGesturesEnabled(false); isCompassEnabled = false; isLogoEnabled = false; isAttributionEnabled = false }
                 map.setMinZoomPreference(wereldZoom)
@@ -645,6 +651,7 @@ private fun KaartInhoud(staat: KaartStaat, nav: Nav, inBeeld: Boolean) {
                 levensloop.removeObserver(kijker)
                 if (openKaart === mapView) openKaart = null
                 motor.kaart = null
+                kaartKlaar = false
                 mapView.onPause(); mapView.onStop(); mapView.onDestroy()
             }
         }
@@ -744,6 +751,7 @@ private fun KaartInhoud(staat: KaartStaat, nav: Nav, inBeeld: Boolean) {
                 modifier = Modifier.graphicsLayer { scaleX = 1 / schaal; scaleY = 1 / schaal; transformOrigin = TransformOrigin(0f, 0f) }
                     .layout { m, _ -> val p = m.measure(Constraints.fixed((w * schaal).roundToInt(), (h * schaal).roundToInt())); layout(w, h) { p.place(0, 0) } },
             )
+            if (!kaartKlaar) Box(Modifier.fillMaxSize().background(Kleur.achtergrond))
             // geen ondergrond (offline / tiles.immich.cloud onbereikbaar): landcontouren uit landen.bin
             if (stijlFout && !stijlKlaar) LandenLaag(staat.camera, w, h)
 
