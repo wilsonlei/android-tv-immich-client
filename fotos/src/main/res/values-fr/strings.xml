@@ -510,11 +510,8 @@
     <string name="mappen_geen_recht_uitleg">La clé API n\'a pas l\'autorisation folder.read.</string>
     <string name="mappen_niet_geladen">Impossible de charger les dossiers</string>
     <string name="map_leeg">Ce dossier est vide</string>
-    <string name="dia_beeld">Pendant le diaporama</string>
-    <string name="dia_beeld_uitleg">Ce qui s\'affiche sur la photo pendant le diaporama ; la pause réaffiche les infos</string>
-    <string name="dia_beeld_alles">Tout</string>
-    <string name="dia_beeld_zonder_ring">Sans anneau</string>
-    <string name="dia_beeld_alleen_foto">Photo seule</string>
+    <string name="dia_ring">Anneau de progression</string>
+    <string name="dia_ring_uitleg">Anneau en haut à droite qui se remplit jusqu\'à la photo suivante</string>
     <string name="dream_ring">Anneau de progression</string>
     <string name="dream_ring_uitleg">Petit anneau en bas à gauche qui se remplit jusqu\'à la photo suivante</string>
     <string name="album_naam">Nom de l\'album</string>

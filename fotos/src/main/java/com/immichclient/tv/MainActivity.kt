@@ -50,6 +50,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
@@ -426,7 +427,7 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
                                 selectedContainerColor = Kleur.primair.copy(alpha = 0.18f), selectedContentColor = Kleur.primair,
                                 focusedContainerColor = Kleur.primair, focusedContentColor = MaterialTheme.colorScheme.onPrimary,
                             ),
-                        ) { Text(if (s == Sectie.FOTOS) naamApp else stringResource(s.label)) }
+                        ) { Text(if (s == Sectie.FOTOS) naamApp else stringResource(s.label), color = LocalContentColor.current) }
                     }
                     Spacer(Modifier.height(12.dp))
                 }
