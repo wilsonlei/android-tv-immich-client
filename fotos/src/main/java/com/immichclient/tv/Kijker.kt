@@ -490,7 +490,8 @@ private fun Beeld(a: Asset, staat: KijkerStaat, actief: Boolean, zicht: () -> Fl
                 Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
             }
         } else {
-            val vullen = staat.diashow && Instellingen.kenBurns && a.ratio in 1.3f..2.1f
+            val isKenBurns = staat.diashow && Instellingen.kenBurns
+            val vullen = isKenBurns && a.ratio in 1.3f..2.1f
             val schaal = if (vullen) ContentScale.Crop else ContentScale.Fit
 
             // 1) thumbhash (blur layer)
@@ -498,8 +499,10 @@ private fun Beeld(a: Asset, staat: KijkerStaat, actief: Boolean, zicht: () -> Fl
                 // background instead of black bars: thumbhash (32 px) stretched full screen = free 'blur', darkened
                 Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
                 Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-                val vorm = Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true)
-                Image(hash, null, vorm, contentScale = ContentScale.FillBounds)
+                if (!isKenBurns) {
+                    val vorm = Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true)
+                    Image(hash, null, vorm, contentScale = ContentScale.FillBounds)
+                }
             }
 
             // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
@@ -517,18 +520,17 @@ private fun Beeld(a: Asset, staat: KijkerStaat, actief: Boolean, zicht: () -> Fl
             }
 
             val p = voortgang.value
-            val isKb = staat.diashow && Instellingen.kenBurns
-            val scaleVal = if (!isKb) 1f else when (mode) {
+            val scaleVal = if (!isKenBurns) 1f else when (mode) {
                 0, 1 -> 1.05f + 0.12f * p     // Zoom In (1.05x -> 1.17x)
                 else -> 1.17f - 0.12f * p     // Zoom Out (1.17x -> 1.05x)
             }
-            val panXVal = if (!isKb) 0f else when (mode) {
+            val panXVal = if (!isKenBurns) 0f else when (mode) {
                 0 -> -0.025f + 0.05f * p      // Pan Left to Right
                 1 -> 0.025f - 0.05f * p       // Pan Right to Left
                 2 -> -0.02f + 0.04f * p       // Pan Left to Right
                 else -> 0.02f - 0.04f * p      // Pan Right to Left
             }
-            val panYVal = if (!isKb) 0f else when (mode) {
+            val panYVal = if (!isKenBurns) 0f else when (mode) {
                 0 -> -0.015f + 0.03f * p      // Pan Top to Bottom
                 1 -> 0.015f - 0.03f * p       // Pan Bottom to Top
                 2 -> 0.015f - 0.03f * p       // Pan Bottom to Top
@@ -541,7 +543,7 @@ private fun Beeld(a: Asset, staat: KijkerStaat, actief: Boolean, zicht: () -> Fl
                 translationX = panXVal * size.width
                 translationY = panYVal * size.height
             }
-            AsyncImage(beeld(Immich.thumb(a.id)), null, mod, contentScale = schaal)
+            if (!isKenBurns) AsyncImage(beeld(Immich.thumb(a.id)), null, mod, contentScale = schaal)
             AsyncImage(preview(a.id), null, mod, contentScale = schaal)
         }
     }
