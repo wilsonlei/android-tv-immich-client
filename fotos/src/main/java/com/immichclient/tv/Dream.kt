@@ -15,8 +15,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -416,12 +416,12 @@ fun DreamScherm(staat: DreamStaat) {
 
         AnimatedContent(
             targetState = huidig, contentKey = { it?.id },
-            // scale 1→1: houdt de oude foto 1,4 s vast; de nieuwe (bovenop) vloeit eroverheen in DreamBeeld (ModulateAlpha,
-            // geen extra laag). De oude blijft volledig zichtbaar tot hij weg is: geen donkere dip halverwege.
-            transitionSpec = { scaleIn(tween(1400), initialScale = 1f) togetherWith scaleOut(tween(1400), targetScale = 1f) },
+            transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
             label = "dream",
         ) { a ->
-            val zicht by transition.animateFloat(transitionSpec = { tween(1100) }, label = "zicht") { if (it == EnterExitState.PreEnter) 0f else 1f }
+            val zicht by transition.animateFloat(transitionSpec = { tween(900) }, label = "zicht") {
+                if (it == EnterExitState.Visible) 1f else 0f
+            }
             if (a != null) DreamBeeld(a, actief = a.id == huidig?.id, kenBurns = kenBurns, duurMs = seconden * 1000L + 2500, zicht = { zicht })
         }
 
@@ -480,20 +480,45 @@ private fun Klok(modifier: Modifier) {
 private fun DreamBeeld(a: Asset, actief: Boolean, kenBurns: Boolean, duurMs: Long, zicht: () -> Float) {
     Box(Modifier.fillMaxSize().graphicsLayer { alpha = zicht(); compositingStrategy = CompositingStrategy.ModulateAlpha }, contentAlignment = Alignment.Center) {
         val vullen = a.ratio in 1.45f..2.0f
-        val zoom = remember { Animatable(1f) }
-        val richting = remember(a.id) { Random.nextInt(-1, 2) }
-        LaunchedEffect(a.id, kenBurns) { if (kenBurns && actief) zoom.animateTo(1.08f, tween(duurMs.toInt(), easing = LinearEasing)) }
+        // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
+        val progress = remember(a.id) { Animatable(0f) }
+        val mode = remember(a.id) { kotlin.math.abs(a.id.hashCode()) % 4 }
+        LaunchedEffect(a.id, kenBurns) {
+            if (kenBurns && actief) {
+                progress.snapTo(0f)
+                progress.animateTo(1f, tween(duurMs.toInt(), easing = LinearEasing))
+            }
+        }
+        val p = progress.value
+        val scaleVal = if (!kenBurns) 1f else when (mode) {
+            0, 1 -> 1.05f + 0.12f * p     // Zoom In (1.05x -> 1.17x)
+            else -> 1.17f - 0.12f * p     // Zoom Out (1.17x -> 1.05x)
+        }
+        val panXVal = if (!kenBurns) 0f else when (mode) {
+            0 -> -0.025f + 0.05f * p      // Pan Left to Right
+            1 -> 0.025f - 0.05f * p       // Pan Right to Left
+            2 -> -0.02f + 0.04f * p       // Pan Left to Right
+            else -> 0.02f - 0.04f * p      // Pan Right to Left
+        }
+        val panYVal = if (!kenBurns) 0f else when (mode) {
+            0 -> -0.015f + 0.03f * p      // Pan Top to Bottom
+            1 -> 0.015f - 0.03f * p       // Pan Bottom to Top
+            2 -> 0.015f - 0.03f * p       // Pan Bottom to Top
+            else -> -0.015f + 0.03f * p   // Pan Top to Bottom
+        }
         val mod = Modifier.fillMaxSize().graphicsLayer {
-            val z = zoom.value
-            scaleX = z; scaleY = z
-            // zwenking: de rand blijft binnen beeld ((z-1)/2 van de breedte speling aan elke kant)
-            translationX = (z - 1f) * size.width * 0.5f * richting
+            scaleX = scaleVal
+            scaleY = scaleVal
+            translationX = panXVal * size.width
+            translationY = panYVal * size.height
         }
         val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
         if (hash != null && !vullen && Instellingen.wazig) {
             Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
             Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-            Image(hash, null, Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true), contentScale = ContentScale.FillBounds)
+            if (!kenBurns) {
+                Image(hash, null, Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true), contentScale = ContentScale.FillBounds)
+            }
         }
         AsyncImage(preview(a.id), null, mod, contentScale = if (vullen) ContentScale.Crop else ContentScale.Fit)
     }
