@@ -15,17 +15,22 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Explore
@@ -46,6 +51,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
@@ -63,13 +69,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
 import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ModalNavigationDrawer
-import androidx.tv.material3.NavigationDrawerItem
-import androidx.tv.material3.NavigationDrawerItemDefaults
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import coil3.ImageLoader
@@ -421,37 +427,53 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                 } else false
             },
             drawerContent = { value ->
+                val open = value == DrawerValue.Open
+                val itemWidth by animateDpAsState(if (open) 200.dp else 56.dp, label = "drawerWidth")
                 Column(
                     Modifier
                         .fillMaxHeight()
-                        .background(if (value == DrawerValue.Open) AppColors.surface else AppColors.background)
-                        .focusProperties { canFocus = value == DrawerValue.Open }
+                        .background(if (open) AppColors.surface else AppColors.background)
+                        .focusProperties { canFocus = open }
                         .padding(12.dp)
                         .selectableGroup(),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Section.entries.forEach { sec ->
                         if (sec == Section.SETTINGS) Spacer(Modifier.weight(1f))
+                        val selected = activeSection == sec && stack.size == 1
                         val label = stringResource(sec.label)
-                        NavigationDrawerItem(
-                            selected = activeSection == sec && stack.size == 1,
+                        Surface(
                             onClick = {
                                 activeSection = sec
                                 stack.clear()
                                 stack.add(screenFor(sec))
                                 scope.launch { drawerState.setValue(DrawerValue.Closed) }
                             },
-                            leadingContent = { Icon(sec.icon, null, Modifier.size(20.dp)) },
                             modifier = Modifier
+                                .width(itemWidth)
                                 .focusRequester(drawerFocus[sec]!!)
                                 .focusProperties { canFocus = drawerReady || sec == activeSection },
-                            colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = AppColors.primary.copy(alpha = 0.22f),
-                                selectedContentColor = AppColors.primary,
+                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
+                            scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
+                            colors = ClickableSurfaceDefaults.colors(
+                                containerColor = if (selected) AppColors.primary.copy(alpha = 0.22f) else Color.Transparent,
+                                contentColor = if (selected) AppColors.primary else AppColors.text,
                                 focusedContainerColor = AppColors.primary,
                                 focusedContentColor = AppColors.onPrimary,
                             ),
                         ) {
-                            Text(label, maxLines = 1, color = LocalContentColor.current)
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                            ) {
+                                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                                    Icon(sec.icon, null, Modifier.size(20.dp))
+                                }
+                                if (open) {
+                                    Spacer(Modifier.width(12.dp))
+                                    Text(label, maxLines = 1, color = LocalContentColor.current)
+                                }
+                            }
                         }
                     }
                 }
