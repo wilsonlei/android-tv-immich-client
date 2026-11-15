@@ -220,7 +220,7 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
             }
             override fun onPlayerError(error: PlaybackException) {
                 val cur = state.source.at(state.index)
-                Log.w("Fotos", "video error for ${cur?.id}", error)
+                Log.w("Immich", "video error for ${cur?.id}", error)
                 state.playingVideo = false
                 state.videoError = true
             }

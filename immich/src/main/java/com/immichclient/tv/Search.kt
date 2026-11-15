@@ -97,7 +97,7 @@ class SearchResults(private val scope: CoroutineScope) {
             val out = runCatching { l(p) }
             if (loader !== l) return@launch // superseded by a new search or cleared (or cancelled)
             out.onSuccess { r -> assets = assets + r.assets.filter { a -> assets.none { it.id == a.id } }; next = r.next }
-                .onFailure { error = it.message; next = null; Log.w("Fotos", "search", it) }
+                .onFailure { error = it.message; next = null; Log.w("Immich", "search", it) }
             loading = false
         }
     }

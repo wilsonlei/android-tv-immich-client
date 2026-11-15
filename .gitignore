@@ -5,7 +5,7 @@ local.properties
 .kotlin/
 .idea/
 *.iml
-# Signing keys and passwords never belong in the repo (see fotos/build.gradle.kts: ~/.android/immichclient-release.properties)
+# Signing keys and passwords never belong in the repo (see immich/build.gradle.kts: ~/.android/immichclient-release.properties)
 *.jks
 *.keystore
 *release.properties

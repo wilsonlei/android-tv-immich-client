@@ -100,7 +100,7 @@ class TimelineState(val filter: Filter, newestFirst: Boolean, private val scope:
         scope.launch {
             runCatching { Immich.months(filter, newestFirst) }
                 .onSuccess { months = it; sumUp(); error = null }
-                .onFailure { error = it.message; Log.w("Fotos", "months", it) }
+                .onFailure { error = it.message; Log.w("Immich", "months", it) }
             loading = false
         }
     }
@@ -146,7 +146,7 @@ class TimelineState(val filter: Filter, newestFirst: Boolean, private val scope:
                     }
                     loaded[m] = a
                 }
-                .onFailure { Log.w("Fotos", "month $m", it) }
+                .onFailure { Log.w("Immich", "month $m", it) }
             inFlight.remove(m)
         }
     }
@@ -249,7 +249,7 @@ fun TimelineScreen(screen: Screen.Timeline, nav: Nav) {
             state.load(m.key)
             scope.launch {
                 val i = currentRows.value.indexOfFirst { it.key == "k-${m.key}" }
-                Log.i("Fotos", "jump to ${m.key}: row $i")
+                Log.i("Immich", "jump to ${m.key}: row $i")
                 if (i >= 0) state.grid.list.scrollToItem(i + topCount)
                 // Wait until the month arrives and focus the first photo
                 repeat(100) {
@@ -539,6 +539,6 @@ object MemoriesCache {
     suspend fun loadToday() {
         val d = LocalDate.now()
         if (fetchedOn == d) return
-        runCatching { Immich.memories(d) }.onSuccess { today = it; fetchedOn = d }.onFailure { Log.w("Fotos", "memories", it) }
+        runCatching { Immich.memories(d) }.onSuccess { today = it; fetchedOn = d }.onFailure { Log.w("Immich", "memories", it) }
     }
 }

@@ -326,10 +326,10 @@
     <string name="err_unexpected">Onverwacht antwoord van de server (HTTP %1$d op %2$s).</string>
     <string name="err_permissions">Deze sleutel mist rechten: %1$s. Maak in Immich een nieuwe sleutel met precies: %2$s.</string>
     <string name="unknown_user">onbekende gebruiker</string>
-    <string name="key_name">Foto\'s op %s</string>
+    <string name="key_name">Immich op %s</string>
 
-    <string name="html_title">Foto\'s koppelen</string>
-    <string name="html_heading">Foto\'s op de tv</string>
+    <string name="html_title">Immich koppelen</string>
+    <string name="html_heading">Immich op de tv</string>
     <string name="html_sub">Koppel met je Immich-server</string>
     <string name="html_address">Adres van je Immich-server</string>
     <string name="html_address_example">bijv. 192.168.1.10:2283 of foto.mijndomein.nl</string>
@@ -405,7 +405,7 @@
     <string name="dream_turn_off">Nu uitzetten</string>
     <string name="dream_toggle_desc">De vorige screensaver wordt onthouden en komt terug als je dit uitzet</string>
     <string name="dream_open_system">Screensaver-instellingen openen</string>
-    <string name="dream_open_system_desc">Kies \"Foto\'s\" in de systeeminstellingen</string>
+    <string name="dream_open_system_desc">Kies \"Immich\" in de systeeminstellingen</string>
     <string name="dream_auto_heading">Automatisch (netwerkfoutopsporing)</string>
     <string name="dream_auto_desc">Het apparaat verbindt met zijn eigen foutopsporingspoort en stelt alles zelf in. Vereist Ontwikkelaarsopties → Netwerkfoutopsporing (of \"ADB via netwerk\"). De eerste keer vraagt de tv of foutopsporing mag: kies Altijd toestaan.</string>
     <string name="dream_auto_button">Automatisch instellen</string>

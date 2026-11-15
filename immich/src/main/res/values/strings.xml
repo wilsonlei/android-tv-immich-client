@@ -342,11 +342,11 @@
     <string name="err_unexpected">Unexpected response from the server (HTTP %1$d on %2$s).</string>
     <string name="err_permissions">This key is missing permissions: %1$s. Create a new key in Immich with exactly: %2$s.</string>
     <string name="unknown_user">unknown user</string>
-    <string name="key_name">Photos on %s</string>
+    <string name="key_name">Immich on %s</string>
 
     <!-- Phone page (served by the TV) -->
-    <string name="html_title">Connect Photos</string>
-    <string name="html_heading">Photos on the TV</string>
+    <string name="html_title">Connect Immich</string>
+    <string name="html_heading">Immich on the TV</string>
     <string name="html_sub">Connect to your Immich server</string>
     <string name="html_address">Address of your Immich server</string>
     <string name="html_address_example">e.g. 192.168.1.10:2283 or photos.mydomain.com</string>
@@ -422,7 +422,7 @@
     <string name="dream_turn_off">Turn off now</string>
     <string name="dream_toggle_desc">The previous screensaver is remembered and restored when you turn this off</string>
     <string name="dream_open_system">Open screensaver settings</string>
-    <string name="dream_open_system_desc">Pick \"Photos\" in the system settings</string>
+    <string name="dream_open_system_desc">Pick \"Immich\" in the system settings</string>
     <string name="dream_auto_heading">Automatic (network debugging)</string>
     <string name="dream_auto_desc">The device connects to its own debug port and sets everything up. Requires Developer options → Network debugging (or \"ADB over network\"). The first time, the TV asks whether to allow debugging: choose Always allow.</string>
     <string name="dream_auto_button">Set up automatically</string>

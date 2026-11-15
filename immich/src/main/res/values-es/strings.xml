@@ -332,10 +332,10 @@
     <string name="err_unexpected">Respuesta inesperada del servidor (HTTP %1$d en %2$s).</string>
     <string name="err_permissions">A esta clave le faltan permisos: %1$s. Crea en Immich una clave nueva con exactamente: %2$s.</string>
     <string name="unknown_user">usuario desconocido</string>
-    <string name="key_name">Fotos en %s</string>
+    <string name="key_name">Immich en %s</string>
 
-    <string name="html_title">Conectar Fotos</string>
-    <string name="html_heading">Fotos en el televisor</string>
+    <string name="html_title">Conectar Immich</string>
+    <string name="html_heading">Immich en el televisor</string>
     <string name="html_sub">Conecta con tu servidor Immich</string>
     <string name="html_address">Dirección de tu servidor Immich</string>
     <string name="html_address_example">p. ej. 192.168.1.10:2283 o fotos.midominio.es</string>
@@ -411,7 +411,7 @@
     <string name="dream_turn_off">Desactivar ahora</string>
     <string name="dream_toggle_desc">El salvapantallas anterior se recuerda y se restaura al desactivar este</string>
     <string name="dream_open_system">Abrir los ajustes del salvapantallas</string>
-    <string name="dream_open_system_desc">Elige «Fotos» en los ajustes del sistema</string>
+    <string name="dream_open_system_desc">Elige «Immich» en los ajustes del sistema</string>
     <string name="dream_auto_heading">Automático (depuración por red)</string>
     <string name="dream_auto_desc">El dispositivo se conecta a su propio puerto de depuración y lo configura todo él mismo. Requiere Opciones de desarrollador → Depuración por red (o «ADB por red»). La primera vez, el televisor pregunta si permitir la depuración: elige Permitir siempre.</string>
     <string name="dream_auto_button">Configurar automáticamente</string>

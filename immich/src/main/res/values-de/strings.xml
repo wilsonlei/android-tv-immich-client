@@ -326,10 +326,10 @@
     <string name="err_unexpected">Unerwartete Antwort vom Server (HTTP %1$d auf %2$s).</string>
     <string name="err_permissions">Diesem Schlüssel fehlen Berechtigungen: %1$s. Erstelle in Immich einen neuen Schlüssel mit genau: %2$s.</string>
     <string name="unknown_user">unbekannter Benutzer</string>
-    <string name="key_name">Fotos auf %s</string>
+    <string name="key_name">Immich auf %s</string>
 
-    <string name="html_title">Fotos verbinden</string>
-    <string name="html_heading">Fotos auf dem Fernseher</string>
+    <string name="html_title">Immich verbinden</string>
+    <string name="html_heading">Immich auf dem Fernseher</string>
     <string name="html_sub">Mit deinem Immich-Server verbinden</string>
     <string name="html_address">Adresse deines Immich-Servers</string>
     <string name="html_address_example">z. B. 192.168.1.10:2283 oder fotos.meinedomain.de</string>
@@ -405,7 +405,7 @@
     <string name="dream_turn_off">Jetzt ausschalten</string>
     <string name="dream_toggle_desc">Der bisherige Bildschirmschoner wird gemerkt und beim Ausschalten wiederhergestellt</string>
     <string name="dream_open_system">Bildschirmschoner-Einstellungen öffnen</string>
-    <string name="dream_open_system_desc">In den Systemeinstellungen \"Fotos\" wählen</string>
+    <string name="dream_open_system_desc">In den Systemeinstellungen \"Immich\" wählen</string>
     <string name="dream_auto_heading">Automatisch (Netzwerk-Debugging)</string>
     <string name="dream_auto_desc">Das Gerät verbindet sich mit seinem eigenen Debug-Port und richtet alles selbst ein. Voraussetzung: Entwickleroptionen → Netzwerk-Debugging (oder \"ADB über Netzwerk\"). Beim ersten Mal fragt der Fernseher, ob Debugging erlaubt werden soll: Immer zulassen wählen.</string>
     <string name="dream_auto_button">Automatisch einrichten</string>

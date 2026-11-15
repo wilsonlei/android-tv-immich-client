@@ -25,20 +25,20 @@ android {
 
     // Fixed release key, so a new version can be installed over an old one.
     // Keystore + passwords live outside the source tree: ~/.android/immichclient-release.properties (storeFile, storePassword,
-    // keyAlias, keyPassword; chmod 600; the older ~/.android/fotos-release.properties is also still read) or the
+    // keyAlias, keyPassword; chmod 600) or the
     // environment variables IMMICHCLIENT_KEYSTORE / IMMICHCLIENT_KEYSTORE_PASSWORD / IMMICHCLIENT_KEY_ALIAS /
     // IMMICHCLIENT_KEY_PASSWORD. If everything is missing, fall back to the debug key.
     val releaseProps = Properties().apply {
         val home = System.getProperty("user.home")
-        val f = listOf("immichclient-release.properties", "fotos-release.properties").map { File(home, ".android/$it") }.firstOrNull { it.isFile }
+        val f = listOf("immichclient-release.properties", "immich-release.properties").map { File(home, ".android/$it") }.firstOrNull { it.isFile }
         f?.inputStream()?.use { load(it) }
     }
-    fun releaseValue(name: String, env: String) = releaseProps.getProperty(name) ?: System.getenv("IMMICHCLIENT_$env") ?: System.getenv("FOTOS_$env")
+    fun releaseValue(name: String, env: String) = releaseProps.getProperty(name) ?: System.getenv("IMMICHCLIENT_$env") ?: System.getenv("IMMICH_$env")
     val releaseStore = releaseValue("storeFile", "KEYSTORE")?.let { File(it) }?.takeIf { it.isFile }
     if (releaseStore != null) signingConfigs.create("release") {
         storeFile = releaseStore
         storePassword = releaseValue("storePassword", "KEYSTORE_PASSWORD")
-        keyAlias = releaseValue("keyAlias", "KEY_ALIAS") ?: "fotos"
+        keyAlias = releaseValue("keyAlias", "KEY_ALIAS") ?: "immich"
         keyPassword = releaseValue("keyPassword", "KEY_PASSWORD")
     }
 

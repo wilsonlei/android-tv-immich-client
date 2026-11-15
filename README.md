@@ -191,14 +191,14 @@ The screensaver starts after the device's normal idle time; the setup screen in 
 Requirements: JDK 17 and the Android SDK (platform 35).
 
 ```sh
-./gradlew :fotos:assembleRelease
-# → fotos/build/outputs/apk/release/fotos-release.apk
+./gradlew :immich:assembleRelease
+# → immich/build/outputs/apk/release/immich-release.apk
 ```
 
 Always use the release build on a TV: Jetpack Compose is noticeably slower in debug builds. For the smoothest first start, precompile the app once:
 
 ```sh
-adb install -r fotos/build/outputs/apk/release/fotos-release.apk
+adb install -r immich/build/outputs/apk/release/immich-release.apk
 adb shell cmd package compile -m speed -f com.immichclient.tv
 ```
 
@@ -216,9 +216,9 @@ or set the environment variables `IMMICHCLIENT_KEYSTORE`, `IMMICHCLIENT_KEYSTORE
 ### Notes for developers
 
 - Kotlin, Jetpack Compose for TV (`androidx.tv:tv-material`), [Coil 3](https://coil-kt.github.io/coil/), [Media3/ExoPlayer](https://developer.android.com/media/media3) and [MapLibre Native](https://maplibre.org/).
-- Source code identifiers and comments are in Dutch. User-facing strings live in `res/values*/strings.xml`. To add a language, add a `values-xx/strings.xml`, add the code to `resourceConfigurations` in `fotos/build.gradle.kts` and to the list in `Taal.kt`.
+- Source code identifiers and comments are in Dutch. User-facing strings live in `res/values*/strings.xml`. To add a language, add a `values-xx/strings.xml`, add the code to `resourceConfigurations` in `immich/build.gradle.kts` and to the list in `Taal.kt`.
 - The app is tuned for 2 GB TV boxes: a fixed, small image cache, previews decoded at screen size, small video buffers and a lazily loaded timeline. Keep memory usage in mind when adding features.
-- `fotos/landen_bin.py` builds `assets/landen.bin` (country outlines for the map in the viewer) from Natural Earth data.
+- `immich/landen_bin.py` builds `assets/landen.bin` (country outlines for the map in the viewer) from Natural Earth data.
 
 ## Support the project
 
@@ -232,6 +232,6 @@ Like the app? You can support its development through [GitHub Sponsors](https://
 - Satellite imagery: [Sentinel-2 cloudless](https://s2maps.eu) by [EOX IT Services GmbH](https://eox.at) (contains modified Copernicus Sentinel data), licensed CC BY-NC-SA 4.0, **non-commercial use only**.
 - Country outlines: [Natural Earth](https://www.naturalearthdata.com) (public domain).
 - [ThumbHash](https://github.com/evanw/thumbhash) by Evan Wallace (MIT), ported to Kotlin.
-- [Overpass](https://github.com/RedHatOfficial/Overpass) font (SIL Open Font License 1.1, see `fotos/OFL-Overpass.txt`).
+- [Overpass](https://github.com/RedHatOfficial/Overpass) font (SIL Open Font License 1.1, see `immich/OFL-Overpass.txt`).
 - This project: MIT licence (see `LICENSE`).
 - [MapLibre Native](https://github.com/maplibre/maplibre-native) (BSD 2-Clause), [Coil](https://github.com/coil-kt/coil) (Apache 2.0), [ZXing](https://github.com/zxing/zxing) (Apache 2.0), AndroidX (Apache 2.0), OkHttp (Apache 2.0).

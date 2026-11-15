@@ -172,7 +172,7 @@ class DreamQueue {
     /** Pick and preload the next photo in advance while the current one is visible. */
     suspend fun lookAhead(ctx: Context) = lock.withLock {
         if (ahead != null) return@withLock
-        val a = runCatching { fetch() }.onFailure { Log.w("Fotos", "screensaver lookAhead", it) }.getOrNull() ?: return@withLock
+        val a = runCatching { fetch() }.onFailure { Log.w("Immich", "screensaver lookAhead", it) }.getOrNull() ?: return@withLock
         ahead = a
         SingletonImageLoader.get(ctx).enqueue(previewRequest(ctx, a.id))
     }
@@ -233,7 +233,7 @@ class DreamQueue {
                     seqIdx = keys.indexOfFirst { if (oldest) it.take(7) >= ym else it.take(7) <= ym }.coerceAtLeast(0)
                 }
             }
-            Log.i("Fotos", "screensaver: fixed order, ${keys.size} months, starting at ${keys.getOrNull(seqIdx)} (after $resumeAfter)")
+            Log.i("Immich", "screensaver: fixed order, ${keys.size} months, starting at ${keys.getOrNull(seqIdx)} (after $resumeAfter)")
         }
         val ms = sequence.orEmpty()
         if (ms.isEmpty()) return null
@@ -370,7 +370,7 @@ fun DreamScreen(state: DreamState) {
                 else -> runCatching { nextPhoto() }.fold(
                     onSuccess = { n -> n?.also { h.add(it); if (h.size > 30) h.removeAt(0); state.pos = h.lastIndex } },
                     onFailure = { e ->
-                        Log.w("Fotos", "screensaver: ${e.message}")
+                        Log.w("Immich", "screensaver: ${e.message}")
                         val m = messageFor(e)
                         if (m != R.string.dream_no_connection) waitMs = 60_000L
                         fail(m); null
@@ -386,7 +386,7 @@ fun DreamScreen(state: DreamState) {
                 // Fetch the preview first (max 8 s), then switch: no half-loaded or blank photo
                 val ok = withTimeoutOrNull(8_000) { runCatching { loader.execute(previewRequest(ctx, a.id)) is SuccessResult }.getOrDefault(false) } == true
                 if (!ok) {
-                    Log.w("Fotos", "screensaver: preview ${a.id} not loaded")
+                    Log.w("Immich", "screensaver: preview ${a.id} not loaded")
                     fail(R.string.dream_no_connection)
                     direction = withTimeoutOrNull(waitMs) { state.request.receive() } ?: 1
                     continue
@@ -561,7 +561,7 @@ class PhotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, View
         view.setContent { PhotosTheme { DreamScreen(state) } }
         setContentView(view)
         isAttached = true
-        Log.i("Fotos", "screensaver: started (${Settings.dreamSource}, ${Settings.dreamSeconds} s)")
+        Log.i("Immich", "screensaver: started (${Settings.dreamSource}, ${Settings.dreamSeconds} s)")
     }
 
     override fun onDreamingStarted() {
@@ -593,10 +593,10 @@ class PhotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, View
     private fun wake() {
         if (woken) return
         woken = true
-        Log.i("Fotos", "screensaver: key press, waking up")
-        runCatching { wakeUp() }.onFailure { Log.w("Fotos", "screensaver wakeUp", it); finish() }
+        Log.i("Immich", "screensaver: key press, waking up")
+        runCatching { wakeUp() }.onFailure { Log.w("Immich", "screensaver wakeUp", it); finish() }
         // Safety net: still not gone after 2 s -> hard stop
-        handler.postDelayed({ if (isAttached) { Log.w("Fotos", "screensaver: wakeUp didn't work, finish()"); runCatching { finish() } } }, 2000)
+        handler.postDelayed({ if (isAttached) { Log.w("Immich", "screensaver: wakeUp didn't work, finish()"); runCatching { finish() } } }, 2000)
     }
 
     private fun wakeLatest(ms: Long) = handler.postDelayed({ if (!woken) wake() }, ms)
@@ -619,7 +619,7 @@ class PhotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, View
         registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
         super.onDetachedFromWindow()
-        Log.i("Fotos", "screensaver: stopped")
+        Log.i("Immich", "screensaver: stopped")
     }
 }
 

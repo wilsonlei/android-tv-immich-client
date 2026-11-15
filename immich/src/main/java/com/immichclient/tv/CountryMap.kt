@@ -275,7 +275,7 @@ fun CountryMapOverlay(target: Asset?, widthPx: Int, heightPx: Int, sizeScale: Fl
         snapshotFlow { currentTarget.value }.collect { a ->
             val old = shape
             if (a == null || a.lat == null || a.lon == null) { if (old != null) hide(); return@collect }
-            val next = runCatching { compute(a) }.onFailure { android.util.Log.w("Fotos", "country map", it) }.getOrNull()
+            val next = runCatching { compute(a) }.onFailure { android.util.Log.w("Immich", "country map", it) }.getOrNull()
             if (old != null && next != null && old.country == next.country && old.ringIdx == next.ringIdx) {
                 val d = old.dotFor(a.lon.toFloat(), a.lat.toFloat())
                 val p = position(old)

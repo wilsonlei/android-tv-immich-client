@@ -332,10 +332,10 @@
     <string name="err_unexpected">Réponse inattendue du serveur (HTTP %1$d sur %2$s).</string>
     <string name="err_permissions">Il manque des droits à cette clé : %1$s. Créez dans Immich une nouvelle clé avec exactement : %2$s.</string>
     <string name="unknown_user">utilisateur inconnu</string>
-    <string name="key_name">Photos sur %s</string>
+    <string name="key_name">Immich sur %s</string>
 
-    <string name="html_title">Connecter Photos</string>
-    <string name="html_heading">Photos sur le téléviseur</string>
+    <string name="html_title">Connecter Immich</string>
+    <string name="html_heading">Immich sur le téléviseur</string>
     <string name="html_sub">Connexion à votre serveur Immich</string>
     <string name="html_address">Adresse de votre serveur Immich</string>
     <string name="html_address_example">ex. 192.168.1.10:2283 ou photos.mondomaine.fr</string>
@@ -411,7 +411,7 @@
     <string name="dream_turn_off">Désactiver maintenant</string>
     <string name="dream_toggle_desc">L\'écran de veille précédent est mémorisé et rétabli quand vous désactivez celui-ci</string>
     <string name="dream_open_system">Ouvrir les réglages de l\'écran de veille</string>
-    <string name="dream_open_system_desc">Choisissez « Photos » dans les réglages du système</string>
+    <string name="dream_open_system_desc">Choisissez « Immich » dans les réglages du système</string>
     <string name="dream_auto_heading">Automatique (débogage réseau)</string>
     <string name="dream_auto_desc">L\'appareil se connecte à son propre port de débogage et configure tout lui-même. Nécessite Options pour les développeurs → Débogage réseau (ou « ADB via le réseau »). La première fois, le téléviseur demande s\'il faut autoriser le débogage : choisissez Toujours autoriser.</string>
     <string name="dream_auto_button">Configurer automatiquement</string>

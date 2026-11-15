@@ -94,7 +94,7 @@ class App : Application() {
                 .build()
         }
         val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
-        Log.i("Fotos", "app started: memClass=${am.memoryClass}MB, large=${am.largeMemoryClass}MB, lowRam=${am.isLowRamDevice}")
+        Log.i("Immich", "app started: memClass=${am.memoryClass}MB, large=${am.largeMemoryClass}MB, lowRam=${am.isLowRamDevice}")
     }
 
     override fun onTrimMemory(level: Int) {
@@ -108,7 +108,7 @@ class App : Application() {
 
     /** Release caches when hidden or before starting the screensaver. */
     fun releaseMemory(reason: String) {
-        Log.i("Fotos", "releaseMemory ($reason)")
+        Log.i("Immich", "releaseMemory ($reason)")
         SingletonImageLoader.get(this).memoryCache?.clear()
         ThumbHash.clear()
     }

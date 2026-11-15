@@ -236,7 +236,7 @@ class MapState(private val scope: CoroutineScope) {
                         val x = DoubleArray(m.count) { worldX(m.lon[it]) }; val y = DoubleArray(m.count) { worldY(m.lat[it]) }
                         val t = System.currentTimeMillis()
                         val idx = MapIndex(m, x, y, dm.density, threshold)
-                        Log.i("Fotos", "map: ${m.count} markers, ${idx.countryCodes.size} countries, tree in ${System.currentTimeMillis() - t} ms")
+                        Log.i("Immich", "map: ${m.count} markers, ${idx.countryCodes.size} countries, tree in ${System.currentTimeMillis() - t} ms")
                         Triple(x, y, idx)
                     }
                     wx = x; wy = y; markers = m; index = idx
@@ -244,10 +244,10 @@ class MapState(private val scope: CoroutineScope) {
                     launch(Dispatchers.Default) {
                         val t = System.currentTimeMillis()
                         runCatching { idx.warmUp(Settings.cluster.maxZoom.toInt()) }
-                        Log.i("Fotos", "map: levels ready in ${System.currentTimeMillis() - t} ms")
+                        Log.i("Immich", "map: levels ready in ${System.currentTimeMillis() - t} ms")
                     }
                 }
-                .onFailure { error = it.message; Log.w("Fotos", "markers", it) }
+                .onFailure { error = it.message; Log.w("Immich", "markers", it) }
         }
     }
 
@@ -284,7 +284,7 @@ class MapSource(private val ids: List<String>, private val scope: CoroutineScope
         val id = ids.getOrNull(i) ?: return null
         cache[id]?.let { return it }
         if (inFlight.add(id)) scope.launch {
-            runCatching { Immich.asset(id) }.onSuccess { cache[id] = it }.onFailure { inFlight.remove(id); Log.w("Fotos", "asset $id", it) }
+            runCatching { Immich.asset(id) }.onSuccess { cache[id] = it }.onFailure { inFlight.remove(id); Log.w("Immich", "asset $id", it) }
         }
         return null
     }
@@ -338,7 +338,7 @@ private class MapEngine(
             if (map.tileLodZoomShift != mapLod.toDouble()) map.tileLodZoomShift = mapLod.toDouble()
             if (measStart != 0L && measFrames > 0) {
                 val dur = System.currentTimeMillis() - measStart
-                Log.i("Fotos", "map move: $dur ms, $measFrames map frames (%.0f fps), render avg %.1f ms max %.1f ms, zoom %.2f".format(
+                Log.i("Immich", "map move: $dur ms, $measFrames map frames (%.0f fps), render avg %.1f ms max %.1f ms, zoom %.2f".format(
                     measFrames * 1000.0 / dur, measRenderMs / measFrames, measMaxMs, p.zoom))
             }
             measStart = 0L
@@ -536,7 +536,7 @@ fun MapScreen(state: MapState, nav: Nav) {
         val observer = LifecycleEventObserver { _, e ->
             when (e) {
                 Lifecycle.Event.ON_START -> visible = true
-                Lifecycle.Event.ON_STOP -> { visible = false; Log.i("Fotos", "map: app hidden, MapView removed") }
+                Lifecycle.Event.ON_STOP -> { visible = false; Log.i("Immich", "map: app hidden, MapView removed") }
                 else -> {}
             }
         }
@@ -616,7 +616,7 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) mapView.onResume()
             lifecycle.addObserver(observer)
             openMap = mapView
-            mapView.addOnDidFailLoadingMapListener { Log.w("Fotos", "map style: $it"); styleError = true }
+            mapView.addOnDidFailLoadingMapListener { Log.w("Immich", "map style: $it"); styleError = true }
             mapView.addOnDidFinishRenderingFrameListener(MapView.OnDidFinishRenderingFrameListener { complete, _, renderS ->
                 engine.frameFinished(complete, renderS)
                 if (complete && styleReady && !mapReady) mapReady = true
@@ -629,7 +629,7 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
                 if (mapFps > 0) mapView.setMaximumFps(mapFps)
                 if (!mapCache) map.setTileCacheEnabled(false)
                 if (mapPrefetch >= 0) map.prefetchZoomDelta = mapPrefetch
-                Log.i("Fotos", "map: lod $mapLod, flight $mapFlight, res $mapRes, texture $mapTexture, fps ${mapFps.takeIf { it > 0 } ?: "free"}, allLayers $mapAllLayers, cache $mapCache, prefetch ${map.prefetchZoomDelta}, pixelRatio ${mapView.pixelRatio}")
+                Log.i("Immich", "map: lod $mapLod, flight $mapFlight, res $mapRes, texture $mapTexture, fps ${mapFps.takeIf { it > 0 } ?: "free"}, allLayers $mapAllLayers, cache $mapCache, prefetch ${map.prefetchZoomDelta}, pixelRatio ${mapView.pixelRatio}")
                 map.addOnCameraMoveListener { engine.readCamera(map, idle = false) }
                 map.addOnCameraIdleListener { engine.readCamera(map, idle = true) }
                 engine.map = map
@@ -637,7 +637,7 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
                 // Projection check (once): our formula alongside MapLibre's
                 val p = map.projection.toScreenLocation(LatLng(52.0, 5.0))
                 val cam = state.camera.value
-                Log.i("Fotos", "map projection: maplibre=(${p.x},${p.y}) ours=(${(worldX(5.0) - cam.cx) * cam.scale + w / 2}, ${(worldY(52.0) - cam.cy) * cam.scale + h / 2}) pr=$pr/${mapView.pixelRatio}")
+                Log.i("Immich", "map projection: maplibre=(${p.x},${p.y}) ours=(${(worldX(5.0) - cam.cx) * cam.scale + w / 2}, ${(worldY(52.0) - cam.cy) * cam.scale + h / 2}) pr=$pr/${mapView.pixelRatio}")
             }
             onDispose {
                 state.saved = state.camera.value
@@ -662,7 +662,7 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
                 styleReady = true
                 if (!mapAllLayers) {
                     val n = STRIP_LAYERS.count { style.removeLayer(it) }
-                    Log.i("Fotos", "map style ${kind.name}: $n layers removed, ${style.layers.size} left")
+                    Log.i("Immich", "map style ${kind.name}: $n layers removed, ${style.layers.size} left")
                 }
                 // Satellite = hybrid: remove all fills (land, water, landuse) and put Sentinel-2 at the bottom;
                 // roads, borders, and labels from Immich's style remain on top
@@ -717,11 +717,11 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
                         if (repeat == 0) okLong = false
                         else if (!okLong) {
                             okLong = true; Keys.okConsumed = true
-                            Log.i("Fotos", "map: long-OK opens grid")
+                            Log.i("Immich", "map: long-OK opens grid")
                             engine.photos(MapAction.GRID)
                         }
                     } else if (e.type == KeyEventType.KeyUp) {
-                        if (!okLong) { Log.i("Fotos", "map: OK press (short)"); engine.pick() }
+                        if (!okLong) { Log.i("Immich", "map: OK press (short)"); engine.pick() }
                         okLong = false
                     }
                     hintUntil = System.currentTimeMillis() + 3000
