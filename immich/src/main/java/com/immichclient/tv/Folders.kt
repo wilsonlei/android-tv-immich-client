@@ -9,8 +9,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,10 +20,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
-import androidx.compose.foundation.lazy.grid.LazyGridState
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
@@ -136,10 +134,10 @@ class FolderTree(scope: CoroutineScope) {
 class FolderState(val tree: FolderTree, val node: FolderNode?, scope: CoroutineScope) {
     var photos by mutableStateOf<List<Asset>?>(null)
     var error by mutableStateOf<String?>(null)
-    val grid = LazyGridState()
-    /** index (folders first, then photos) that should receive focus when visible; -1 = none */
-    var focusTarget by mutableIntStateOf(0)
-    var lastFocus = 0
+    val grid = GridState()
+    /** Subfolder index that should receive focus when visible; -1 = none. */
+    var folderFocus by mutableIntStateOf(0)
+    var lastFolderFocus = 0
     private var loaded: FolderNode? = null
 
     init { scope.launch { load() } }
@@ -184,26 +182,39 @@ fun FoldersScreen(screen: Screen.Folders, nav: Nav) {
     val title = if (k === tree.start) stringResource(R.string.section_folders) else k.name
     fun view(i: Int, slideshow: Boolean) {
         if (photos.isEmpty()) return
-        nav.view(ListSource(photos), i.coerceIn(0, photos.lastIndex), title, slideshow, null) { state.focusTarget = state.lastFocus }
+        nav.view(ListSource(photos), i.coerceIn(0, photos.lastIndex), title, slideshow, state.grid)
     }
 
-    Box(Modifier.fillMaxSize()) {
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(COLUMNS),
-            state = state.grid,
-            contentPadding = PaddingValues(start = 24.dp, end = 40.dp, top = 20.dp, bottom = 80.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.fillMaxSize().onPreviewKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (e.key.nativeKeyCode) {
-                    // ⏯ = slideshow of this folder, starting from the selected photo (or the first)
-                    KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY -> { view(state.lastFocus - folders.size, true); photos.isNotEmpty() }
-                    else -> false
+    BoxWithConstraints(
+        Modifier.fillMaxSize().onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (e.key.nativeKeyCode) {
+                // ⏯ = slideshow of this folder, starting from the selected photo (or the first)
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE, KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                    val idx = state.grid.lastFocus?.let { photos.indexOf(it) }?.takeIf { it >= 0 } ?: 0
+                    view(idx, true)
+                    photos.isNotEmpty()
                 }
-            },
+                else -> false
+            }
+        },
+    ) {
+        val width = widthFor(maxWidth.value)
+        val rowHeight = Settings.rowSize.height
+        val rows = remember(photos, width, rowHeight) { rowsFor(photos, width, byDay = true, height = rowHeight) }
+        val folderRows = remember(folders) { folders.chunked(COLUMNS) }
+        val showLoading = state.photos == null && k.hasPhotos
+        val showEmpty = state.photos != null && folders.isEmpty() && photos.isEmpty()
+        val headerCount = 1 + folderRows.size + (if (showLoading || showEmpty) 1 else 0)
+
+        PhotoGrid(
+            rows = rows,
+            state = state.grid,
+            headerCount = headerCount,
+            onClick = { a -> view(photos.indexOf(a), false) },
+            modifier = Modifier.fillMaxSize(),
         ) {
-            item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
+            item(key = "header", contentType = "header") {
                 val parts = listOfNotNull(
                     folders.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.folders_count, it, it) },
                     photos.size.takeIf { it > 0 }?.let { pluralStringResource(R.plurals.items, it, it) },
@@ -211,7 +222,7 @@ fun FoldersScreen(screen: Screen.Folders, nav: Nav) {
                 val path = tree.start?.let { k.relativeTo(it) }.orEmpty()
                 ScreenHeader(title, listOfNotNull(path.takeIf { it.isNotEmpty() && it != title }, parts.joinToString("  ·  ").ifEmpty { null }).joinToString("   —   ").ifEmpty { null }) {
                     if (folders.size > 1) ChoiceChip(
-                        selected = false, onClick = { tree.reversed = !tree.reversed; state.focusTarget = 0 },
+                        selected = false, onClick = { tree.reversed = !tree.reversed; state.folderFocus = 0 },
                         text = if (tree.reversed) "Z–A" else "A–Z",
                     )
                     if (photos.isNotEmpty()) ChoiceChip(
@@ -221,43 +232,53 @@ fun FoldersScreen(screen: Screen.Folders, nav: Nav) {
                     )
                 }
             }
-            items(folders.size, key = { "m:" + folders[it].path }) { i ->
-                val m = folders[i]
-                FolderTile(m, focusTarget = state.focusTarget == i, onFocusTargetDone = { state.focusTarget = -1 }, onFocus = { state.lastFocus = i }) {
-                    nav.open(Screen.Folders(state.tree, m, nav.scope))
+            items(folderRows.size, key = { "fr:" + folderRows[it].first().path }, contentType = { "folderRow" }) { rIdx ->
+                val row = folderRows[rIdx]
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    row.forEachIndexed { cIdx, m ->
+                        val idx = rIdx * COLUMNS + cIdx
+                        FolderTile(
+                            m,
+                            modifier = Modifier.weight(1f),
+                            focusTarget = state.folderFocus == idx,
+                            onFocusTargetDone = { state.folderFocus = -1 },
+                            onFocus = { state.lastFolderFocus = idx },
+                        ) {
+                            nav.open(Screen.Folders(state.tree, m, nav.scope))
+                        }
+                    }
+                    repeat(COLUMNS - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
-            items(photos.size, key = { "f:" + photos[it].id }) { i ->
-                val idx = folders.size + i
-                IdTile(
-                    photos[i].id, focusTarget = state.focusTarget == idx, onFocusTargetDone = { state.focusTarget = -1 },
-                    onFocus = { state.lastFocus = idx },
-                ) { view(i, false) }
-            }
-            if (state.photos == null && k.hasPhotos) item(span = { GridItemSpan(maxLineSpan) }) {
+            if (showLoading) item(key = "loading") {
                 Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted, modifier = Modifier.padding(top = 24.dp))
             }
-            if (state.photos != null && folders.isEmpty() && photos.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) {
+            if (showEmpty) item(key = "empty") {
                 StatusMessage(stringResource(if (state.error != null) R.string.folders_load_failed else R.string.folder_empty), state.error, Icons.Filled.Folder)
             }
         }
-        val n = folders.size + photos.size
-        if (n > 0) Scrollbar(
-            fraction = { fractionOf(state.grid, 1) },
-            movement = { state.grid.firstVisibleItemIndex * 7919 + state.grid.firstVisibleItemScrollOffset / 200 },
-            scrollable = { state.grid.canScrollForward || state.grid.canScrollBackward },
-            label = { folders.getOrNull((state.grid.firstVisibleItemIndex - 1).coerceAtLeast(0))?.name },
-            sub = { "${Language.number((state.grid.firstVisibleItemIndex - 1).coerceIn(0, n - 1) + 1)} / ${Language.number(n)}" },
-            modifier = Modifier.align(Alignment.CenterEnd),
-        )
+        if (photos.isNotEmpty()) {
+            ListScrollbar(state.grid, rows, photos.size, false, Modifier.align(Alignment.CenterEnd), topCount = headerCount)
+        }
     }
-    // back on this screen (or first time): focus on the last selected tile
-    LaunchedEffect(Unit) { delay(30); if (state.focusTarget < 0) state.focusTarget = state.lastFocus }
+    // Returning from a subfolder or first load: focus the last selected subfolder, or first photo if no subfolders
+    LaunchedEffect(folders.isEmpty(), photos.isNotEmpty()) {
+        delay(30)
+        if (state.grid.returnTo != null || state.grid.focusTarget != null) return@LaunchedEffect
+        if (folders.isNotEmpty()) {
+            if (state.folderFocus < 0) state.folderFocus = state.lastFolderFocus.coerceIn(0, folders.lastIndex)
+        } else if (photos.isNotEmpty() && state.grid.lastFocus == null) {
+            state.grid.focusTarget = photos.first().id
+        }
+    }
 }
 
 /** Folder: large folder icon with name underneath (focus: slightly larger, white border, accent glow). */
 @Composable
-private fun FolderTile(m: FolderNode, focusTarget: Boolean, onFocusTargetDone: () -> Unit, onFocus: () -> Unit, onClick: () -> Unit) {
+private fun FolderTile(m: FolderNode, modifier: Modifier = Modifier, focusTarget: Boolean, onFocusTargetDone: () -> Unit, onFocus: () -> Unit, onClick: () -> Unit) {
     val fr = remember { FocusRequester() }
     if (focusTarget) LaunchedEffect(m.path) {
         repeat(5) { if (runCatching { fr.requestFocus() }.isSuccess) { onFocusTargetDone(); return@LaunchedEffect }; delay(16) }
@@ -267,7 +288,7 @@ private fun FolderTile(m: FolderNode, focusTarget: Boolean, onFocusTargetDone: (
     val scale by animateFloatAsState(if (focus) 1.06f else 1f, tween(140), label = "scale")
     val shape = RoundedCornerShape(10.dp)
     Column(
-        Modifier.aspectRatio(1f)
+        modifier.aspectRatio(1f)
             .graphicsLayer {
                 scaleX = scale; scaleY = scale; this.shape = shape; clip = true
                 shadowElevation = if (focus) 16.dp.toPx() else 0f

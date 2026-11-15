@@ -146,9 +146,6 @@ sealed class Screen {
     class Search(scope: CoroutineScope) : Screen() { val state = SearchState(scope) }
     class Memories(scope: CoroutineScope) : Screen() { val state = MemoriesState(scope) }
     class Map(scope: CoroutineScope) : Screen() { val state = MapState(scope) }
-    class MapPhotos(val title: String, ids: List<String>, scope: CoroutineScope) : Screen() {
-        val state = MapPhotosState(ids, scope)
-    }
     class People(val people: List<Person>) : Screen() { val state = PeopleState(people) }
     class Folders(tree: FolderTree, node: FolderNode?, scope: CoroutineScope) : Screen() {
         val state = FolderState(tree, node, scope)
@@ -494,7 +491,6 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                     is Screen.Search -> SearchScreen(cur.state, nav)
                     is Screen.Memories -> MemoriesScreen(cur.state, nav)
                     is Screen.Map -> MapScreen(cur.state, nav)
-                    is Screen.MapPhotos -> MapPhotosScreen(cur, nav)
                     is Screen.People -> PeopleScreen(cur.state, nav)
                     is Screen.Folders -> FoldersScreen(cur, nav)
                     is Screen.SettingsScreen -> SettingsScreen(
