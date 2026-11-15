@@ -144,7 +144,9 @@ fun dagTitel(d: LocalDate, metJaar: Boolean): String {
 
 fun maandJaar(t: LocalDateTime): String = t.format(Formaat.maandJaar)
 
-fun datumLang(t: LocalDateTime): String = t.format(Formaat.dagLang).hoofdletter() + " ·  " + t.format(Formaat.tijd)
+fun dagLang(t: LocalDateTime): String = t.format(Formaat.dagLang).hoofdletter()
+
+fun datumLang(t: LocalDateTime): String = dagLang(t) + " ·  " + t.format(Formaat.tijd)
 
 fun jarenGeleden(n: Int) = Taal.meervoud(R.plurals.jaren_geleden, n, n)
 

@@ -611,7 +611,7 @@ private fun OnderBalk(a: Asset, staat: KijkerStaat, metKaart: Boolean) {
                 staat.titel?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = Kleur.primair, modifier = Modifier.padding(end = 12.dp)) }
                 if (Instellingen.teller) Text("${staat.index + 1} / ${Taal.getal(staat.bron.aantal)}", style = MaterialTheme.typography.labelMedium, color = Color(0xAAFFFFFF), modifier = Modifier.padding(bottom = 1.dp))
             }
-            Text(datumLang(a.datum), style = MaterialTheme.typography.titleLarge, color = Color.White)
+            Text(dagLang(a.datum), style = MaterialTheme.typography.titleLarge, color = Color.White)
             val plaats = listOfNotNull(a.stad, a.land).joinToString(", ")
             // with map (photo with GPS), the location is shown near the dot
             if (plaats.isNotEmpty() && !metKaart) Text(plaats, style = MaterialTheme.typography.bodyLarge, color = Color(0xDDFFFFFF))
@@ -638,7 +638,7 @@ private fun InfoPaneel(a: Asset, metKaartSprong: Boolean) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Text(stringResource(R.string.info), style = MaterialTheme.typography.headlineSmall)
-            InfoRegel(Icons.Filled.Schedule, datumLang(a.datum), null)
+            InfoRegel(Icons.Filled.Schedule, dagLang(a.datum), null)
             val d = details
             if (d != null) {
                 d.omschrijving?.let { Text(it, style = MaterialTheme.typography.bodyLarge, maxLines = 4, overflow = TextOverflow.Ellipsis) }

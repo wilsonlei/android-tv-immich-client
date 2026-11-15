@@ -12,9 +12,9 @@
 
     <string name="patroon_maand_jaar">MMMM yyyy</string>
     <string name="patroon_maand_kort">MMM yyyy</string>
-    <string name="patroon_dag_kort">EEE d MMM</string>
-    <string name="patroon_dag_jaar">EEE d MMM yyyy</string>
-    <string name="patroon_dag_lang">EEEE d MMMM yyyy</string>
+    <string name="patroon_dag_kort">EEE, MMM d</string>
+    <string name="patroon_dag_jaar">EEE, MMM d, yyyy</string>
+    <string name="patroon_dag_lang">EEEE, MMMM d, yyyy</string>
     <string name="patroon_tijd">HH:mm</string>
 
     <string name="taal_titel">Kies je taal</string>
