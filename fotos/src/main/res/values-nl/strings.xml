@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Foto\'s</string>
-    <string name="alias_photos">Foto\'s</string>
-    <string name="alias_album">Fotoalbum</string>
-    <string name="alias_memories">Herinneringen</string>
-    <string name="alias_family">Familiefoto\'s</string>
-    <string name="appearance_photos">Blauw, gestapelde foto\'s (standaard)</string>
-    <string name="appearance_album">Warm oranje, opengeslagen album</string>
-    <string name="appearance_memories">Paars, foto met ster</string>
-    <string name="appearance_family">Groen, foto met hartje</string>
+    <string name="app_name">Immich</string>
 
     <string name="pattern_month_year">MMMM yyyy</string>
     <string name="pattern_month_short">MMM yyyy</string>
@@ -223,8 +215,6 @@
     <string name="color_pink">Roze</string>
     <string name="color_purple">Paars</string>
     <string name="color_gray">Grijs</string>
-    <string name="name_and_icon">Naam en icoon</string>
-    <string name="name_and_icon_desc">%s. Geldt ook voor de tegel in de launcher (die werkt binnen enkele seconden bij)</string>
     <string name="group_storage">Opslag</string>
     <string name="clear_image_cache">Beeldcache legen</string>
     <string name="cache_size">"%1$s MB op schijf  ·  %2$s MB in het geheugen"</string>
@@ -368,7 +358,7 @@
     <string name="minutes">%d min</string>
 
     <!-- Screensaver (2.1) -->
-    <string name="dream_name">Foto\'s (screensaver)</string>
+    <string name="dream_name">Immich (screensaver)</string>
     <string name="group_screensaver">Screensaver</string>
     <string name="screensaver">Screensaver</string>
     <string name="dream_on_desc">Deze app als screensaver van dit apparaat gebruiken</string>
@@ -441,23 +431,6 @@
     <string name="dream_net_no">Netwerkfoutopsporing staat uit (nodig voor Automatisch instellen)</string>
     <string name="dream_current">Huidige screensaver: %1$s</string>
     <string name="dream_starts_after">start na %1$s zonder bediening</string>
-
-    <!-- Diagnose (2.1) -->
-    <string name="diagnostics">Diagnose</string>
-    <string name="diagnostics_desc">Waarom de app de vorige keer sloot (blijft op dit apparaat)</string>
-    <string name="diagnostics_sub">De laatste keren dat de app onverwacht sloot, met de reden. Er wordt niets verstuurd.</string>
-    <string name="diagnostics_empty">Niets vastgelegd: de app is niet onverwacht gesloten.</string>
-    <string name="diagnostics_footer">Tip: een crash komt hier meteen in te staan; wat Android meldt (geheugen, ANR) verschijnt bij de volgende start.</string>
-    <string name="diag_crash">Crash (fout in de app)</string>
-    <string name="diag_crash_native">Crash (native code)</string>
-    <string name="diag_anr">Reageert niet (ANR)</string>
-    <string name="diag_memory">Gesloten door Android: te weinig geheugen</string>
-    <string name="diag_signal">Beëindigd (signaal, bijv. tijdens een update)</string>
-    <string name="diag_user">Gestopt door de gebruiker of het systeem</string>
-    <string name="diag_system">Gesloten door het systeem</string>
-    <string name="diag_caught">Fout opgevangen (de app liep door)</string>
-    <string name="diag_other">Anders</string>
-    <string name="diag_foreground">op de voorgrond</string>
 
     <!-- 2.5: wereldkaart (werelddelen/regio's), scrollbalk, personen -->
     <string name="continent_europe">Europa</string>

@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fotos</string>
-    <string name="alias_photos">Fotos</string>
-    <string name="alias_album">Fotoalbum</string>
-    <string name="alias_memories">Erinnerungen</string>
-    <string name="alias_family">Familienfotos</string>
-    <string name="appearance_photos">Blau, gestapelte Fotos (Standard)</string>
-    <string name="appearance_album">Warmes Orange, aufgeschlagenes Album</string>
-    <string name="appearance_memories">Lila, Foto mit Stern</string>
-    <string name="appearance_family">Grün, Foto mit Herz</string>
+    <string name="app_name">Immich</string>
 
     <string name="pattern_month_year">MMMM yyyy</string>
     <string name="pattern_month_short">MMM yyyy</string>
@@ -223,8 +215,6 @@
     <string name="color_pink">Rosa</string>
     <string name="color_purple">Lila</string>
     <string name="color_gray">Grau</string>
-    <string name="name_and_icon">Name und Symbol</string>
-    <string name="name_and_icon_desc">%s. Gilt auch für die Kachel im Launcher (aktualisiert sich nach wenigen Sekunden)</string>
     <string name="group_storage">Speicher</string>
     <string name="clear_image_cache">Bildcache leeren</string>
     <string name="cache_size">"%1$s MB auf dem Gerät  ·  %2$s MB im Arbeitsspeicher"</string>
@@ -368,7 +358,7 @@
     <string name="minutes">%d Min.</string>
 
     <!-- Bildschirmschoner (2.1) -->
-    <string name="dream_name">Fotos (Bildschirmschoner)</string>
+    <string name="dream_name">Immich (Bildschirmschoner)</string>
     <string name="group_screensaver">Bildschirmschoner</string>
     <string name="screensaver">Bildschirmschoner</string>
     <string name="dream_on_desc">Diese App als Bildschirmschoner dieses Geräts verwenden</string>
@@ -441,23 +431,6 @@
     <string name="dream_net_no">Netzwerk-Debugging ist deaktiviert (nötig für „Automatisch einrichten“)</string>
     <string name="dream_current">Aktueller Bildschirmschoner: %1$s</string>
     <string name="dream_starts_after">startet nach %1$s ohne Bedienung</string>
-
-    <!-- Diagnose (2.1) -->
-    <string name="diagnostics">Diagnose</string>
-    <string name="diagnostics_desc">Warum die App zuletzt beendet wurde (bleibt auf diesem Gerät)</string>
-    <string name="diagnostics_sub">Die letzten unerwarteten Beendigungen der App mit Grund. Es wird nichts gesendet.</string>
-    <string name="diagnostics_empty">Nichts aufgezeichnet: die App wurde nicht unerwartet beendet.</string>
-    <string name="diagnostics_footer">Hinweis: ein Absturz wird sofort eingetragen; was Android meldet (Speicher, ANR), erscheint beim nächsten Start.</string>
-    <string name="diag_crash">Absturz (Fehler in der App)</string>
-    <string name="diag_crash_native">Absturz (nativer Code)</string>
-    <string name="diag_anr">Reagiert nicht (ANR)</string>
-    <string name="diag_memory">Von Android beendet: zu wenig Speicher</string>
-    <string name="diag_signal">Beendet (Signal, z. B. während eines Updates)</string>
-    <string name="diag_user">Vom Nutzer oder vom System gestoppt</string>
-    <string name="diag_system">Vom System beendet</string>
-    <string name="diag_caught">Fehler abgefangen (die App lief weiter)</string>
-    <string name="diag_other">Sonstiges</string>
-    <string name="diag_foreground">im Vordergrund</string>
 
     <!-- 2.5: wereldkaart (werelddelen/regio's), scrollbalk, personen -->
     <string name="continent_europe">Europa</string>

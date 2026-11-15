@@ -200,8 +200,7 @@ class TimelineState(val filter: Filter, newestFirst: Boolean, private val scope:
 fun TimelineScreen(screen: Screen.Timeline, nav: Nav) {
     val state = screen.state
     val scope = rememberCoroutineScope()
-    // Main timeline is named like the app (Name and icon setting), even if it already existed when that changed
-    val title = if (screen.withMemories) stringResource(Settings.appearance.label) else screen.title
+    val title = screen.title
     var pickerOpen by remember { mutableStateOf(false) }
     var jumpLabel by remember { mutableStateOf<String?>(null) }
     val firstButton = remember { FocusRequester() }

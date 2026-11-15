@@ -1,15 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- App name and launcher variants (Settings → Name and icon) -->
-    <string name="app_name">Photos</string>
-    <string name="alias_photos">Photos</string>
-    <string name="alias_album">Photo album</string>
-    <string name="alias_memories">Memories</string>
-    <string name="alias_family">Family photos</string>
-    <string name="appearance_photos">Blue, stacked photos (default)</string>
-    <string name="appearance_album">Warm orange, open album</string>
-    <string name="appearance_memories">Purple, photo with a star</string>
-    <string name="appearance_family">Green, photo with a heart</string>
+    <string name="app_name">Immich</string>
 
     <!-- Date/time patterns (java.time) for this language -->
     <string name="pattern_month_year">MMMM yyyy</string>
@@ -236,8 +228,6 @@
     <string name="color_pink">Pink</string>
     <string name="color_purple">Purple</string>
     <string name="color_gray">Gray</string>
-    <string name="name_and_icon">Name and icon</string>
-    <string name="name_and_icon_desc">%s. Also changes the tile in the launcher (updates within a few seconds)</string>
     <string name="group_storage">Storage</string>
     <string name="clear_image_cache">Clear image cache</string>
     <string name="cache_size">"%1$s MB on disk  ·  %2$s MB in memory"</string>
@@ -385,7 +375,7 @@
     <string name="minutes">%d min</string>
 
     <!-- Screensaver (2.1) -->
-    <string name="dream_name">Photos (screensaver)</string>
+    <string name="dream_name">Immich (screensaver)</string>
     <string name="group_screensaver">Screensaver</string>
     <string name="screensaver">Screensaver</string>
     <string name="dream_on_desc">Use this app as the screensaver of this device</string>
@@ -458,23 +448,6 @@
     <string name="dream_net_no">Network debugging is off (needed for Set up automatically)</string>
     <string name="dream_current">Current screensaver: %1$s</string>
     <string name="dream_starts_after">starts after %1$s without activity</string>
-
-    <!-- Diagnostics (2.1) -->
-    <string name="diagnostics">Diagnostics</string>
-    <string name="diagnostics_desc">Why the app closed last time (stays on this device)</string>
-    <string name="diagnostics_sub">The last times the app closed unexpectedly, with the reason. Nothing is sent anywhere.</string>
-    <string name="diagnostics_empty">Nothing recorded: the app hasn\'t closed unexpectedly.</string>
-    <string name="diagnostics_footer">Tip: a crash is written here the moment it happens; what Android reports (memory, ANR) appears at the next start.</string>
-    <string name="diag_crash">Crash (error in the app)</string>
-    <string name="diag_crash_native">Crash (native code)</string>
-    <string name="diag_anr">Not responding (ANR)</string>
-    <string name="diag_memory">Closed by Android: low memory</string>
-    <string name="diag_signal">Killed (signal, e.g. during an update)</string>
-    <string name="diag_user">Stopped by the user or the system</string>
-    <string name="diag_system">Closed by the system</string>
-    <string name="diag_caught">Error caught (the app kept running)</string>
-    <string name="diag_other">Other</string>
-    <string name="diag_foreground">while in the foreground</string>
 
     <!-- 2.5: world map (continents/regions), scrollbar, people -->
     <string name="continent_europe">Europe</string>

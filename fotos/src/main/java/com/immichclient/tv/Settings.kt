@@ -1,10 +1,7 @@
 package com.immichclient.tv
 
-import android.content.ComponentName
 import android.content.Context
 import android.content.SharedPreferences
-import android.content.pm.PackageManager
-import android.util.Log
 import androidx.annotation.StringRes
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.Color
@@ -13,8 +10,7 @@ import kotlin.reflect.KProperty
 /**
  * All app settings as a single state object: each setting is Compose state (anyone reading it recomposes on change)
  * and is immediately saved to prefs. Stored per account, just like server/key: `key` or `key_<VIEWER>` (see [load],
- * called from Immich.selectAccount). Only the app appearance (name/icon) applies to the whole device: that lives
- * in the manifest, not per account.
+ * called from Immich.selectAccount).
  *
  * Default values = behavior of version 1.1, so an update doesn't change anything for existing users.
  */
@@ -93,7 +89,6 @@ object Settings {
 
     // ---- Appearance ----
     var accent by choice("accent", Accent.BLUE)
-    var appearance by choice("uiterlijk", Appearance.PHOTOS, perDevice = true)
 
     // ---- Screensaver (DreamService, see Dream.kt) ----
     var dreamSource by choice("dream_bron", DreamSource.ALL)
@@ -135,8 +130,6 @@ object Settings {
         p.getString("kaart_start$suffix", null)?.let { old -> if (MapStart.entries.none { it.name == old }) mapStart = MapStart.MAIN_COUNTRY }
         // up to 2.7.2 the screensaver map was only on/off
         if (!p.contains("dream_kaart_maat$suffix") && !p.getBoolean("dream_kaart$suffix", true)) dreamMap = MapSize.OFF
-        // the manifest is the source of truth for name/icon (e.g. after a reinstall with old prefs)
-        Appearance.entries.firstOrNull { it.isEnabled(c) }?.let { if (it != appearance) appearance = it }
     }
 
     val dreamAlbums get() = listFrom(dreamAlbum)
@@ -189,31 +182,4 @@ enum class Accent(@StringRes val label: Int, val primary: Color, val dark: Color
     PINK(R.string.color_pink, Color(0xFFF9B8D4), Color(0xFFBE185D), Color(0xFF3B0A1F)),
     PURPLE(R.string.color_purple, Color(0xFFD4BCFA), Color(0xFF6D3FC9), Color(0xFF22103F)),
     GRAY(R.string.color_gray, Color(0xFFD9D9DE), Color(0xFF5B5B66), Color(0xFF1A1A1E)),
-}
-
-/**
- * Name + icon + banner of the app in the launcher: one activity-alias in the manifest per variant; exactly one is
- * enabled. Android cannot change a label/icon at runtime, but enabling/disabling an alias works (the launcher updates
- * within a few seconds; a launcher querying by package finds the enabled alias). The label and banner of an alias follow
- * the launcher's system language (manifest resources), while the name inside the app follows the app language.
- */
-enum class Appearance(@StringRes val label: Int, val alias: String, @StringRes val desc: Int) {
-    PHOTOS(R.string.alias_photos, "Photos", R.string.appearance_photos),
-    ALBUM(R.string.alias_album, "PhotoAlbum", R.string.appearance_album),
-    MEMORIES(R.string.alias_memories, "Memories", R.string.appearance_memories),
-    FAMILY(R.string.alias_family, "Family", R.string.appearance_family);
-
-    private fun component(c: Context) = ComponentName(c, "${c.packageName}.$alias")
-    fun isEnabled(c: Context) = c.packageManager.getComponentEnabledSetting(component(c)) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED ||
-        (c.packageManager.getComponentEnabledSetting(component(c)) == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT && this == PHOTOS)
-
-    /** Enable this variant (enable first, then disable the rest: there is always at least one entry point). */
-    fun apply(c: Context) {
-        val pm = c.packageManager
-        runCatching {
-            pm.setComponentEnabledSetting(component(c), PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP)
-            for (u in entries) if (u != this) pm.setComponentEnabledSetting(u.component(c), PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP)
-            Log.i("Photos", "appearance: $name ($alias)")
-        }.onFailure { Log.w("Photos", "appearance", it) }
-    }
 }

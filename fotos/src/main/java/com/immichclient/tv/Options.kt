@@ -206,7 +206,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         if (all) toggleRow(R.string.memories_at_top, R.string.memories_at_top_desc, offOn, Settings.memories) { Settings.memories = it }
         item {
             val choices = listOf(Section.PHOTOS, Section.MEMORIES, Section.MAP, Section.ALBUMS, Section.FOLDERS, Section.FAVORITES)
-            ChoicesRow(stringResource(R.string.start_screen), stringResource(R.string.start_screen_desc), choices.map { stringResource(if (it == Section.PHOTOS) Settings.appearance.label else it.label) },
+            ChoicesRow(stringResource(R.string.start_screen), stringResource(R.string.start_screen_desc), choices.map { stringResource(it.label) },
                 choices.indexOf(Settings.start).coerceAtLeast(0)) { Settings.start = choices[it] }
         }
         if (all) item {
@@ -232,12 +232,6 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         }
         item {
             ChoicesRow(stringResource(R.string.accent_color), stringResource(R.string.accent_color_desc), Accent.entries.map { stringResource(it.label) }, Settings.accent.ordinal, color = Settings.accent.primary) { Settings.accent = Accent.entries[it] }
-        }
-        if (all) item {
-            val u = Settings.appearance
-            ChoicesRow(stringResource(R.string.name_and_icon), stringResource(R.string.name_and_icon_desc, stringResource(u.desc)), Appearance.entries.map { stringResource(it.label) }, u.ordinal) {
-                val next = Appearance.entries[it]; Settings.appearance = next; next.apply(ctx)
-            }
         }
 
         if (all) {
@@ -271,7 +265,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         }
 
         groupHeader(R.string.group_about)
-        item { InfoRow(stringResource(R.string.app_line, stringResource(Settings.appearance.label)), stringResource(R.string.version, version)) }
+        item { InfoRow(stringResource(R.string.app_line, stringResource(R.string.app_name)), stringResource(R.string.version, version)) }
         item { InfoRow(stringResource(R.string.immich_server), immichVersion?.let { stringResource(R.string.version, it) } ?: "…") }
         if (all) item { InfoRow(stringResource(R.string.map), stringResource(R.string.map_attribution, SAT_ATTRIBUTION)) }
         item { Text(stringResource(R.string.unofficial_long), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }

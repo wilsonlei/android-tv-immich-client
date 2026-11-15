@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Photos</string>
-    <string name="alias_photos">Photos</string>
-    <string name="alias_album">Album photo</string>
-    <string name="alias_memories">Souvenirs</string>
-    <string name="alias_family">Photos de famille</string>
-    <string name="appearance_photos">Bleu, photos empilées (par défaut)</string>
-    <string name="appearance_album">Orange chaud, album ouvert</string>
-    <string name="appearance_memories">Violet, photo avec une étoile</string>
-    <string name="appearance_family">Vert, photo avec un cœur</string>
+    <string name="app_name">Immich</string>
 
     <string name="pattern_month_year">MMMM yyyy</string>
     <string name="pattern_month_short">MMM yyyy</string>
@@ -229,8 +221,6 @@
     <string name="color_pink">Rose</string>
     <string name="color_purple">Violet</string>
     <string name="color_gray">Gris</string>
-    <string name="name_and_icon">Nom et icône</string>
-    <string name="name_and_icon_desc">%s. S\'applique aussi à la vignette du lanceur (mise à jour en quelques secondes)</string>
     <string name="group_storage">Stockage</string>
     <string name="clear_image_cache">Vider le cache d\'images</string>
     <string name="cache_size">"%1$s Mo sur le disque  ·  %2$s Mo en mémoire"</string>
@@ -374,7 +364,7 @@
     <string name="minutes">%d min</string>
 
     <!-- Écran de veille (2.1) -->
-    <string name="dream_name">Photos (écran de veille)</string>
+    <string name="dream_name">Immich (écran de veille)</string>
     <string name="group_screensaver">Écran de veille</string>
     <string name="screensaver">Écran de veille</string>
     <string name="dream_on_desc">Utiliser cette application comme écran de veille de cet appareil</string>
@@ -447,23 +437,6 @@
     <string name="dream_net_no">Le débogage réseau est désactivé (nécessaire pour « Configurer automatiquement »)</string>
     <string name="dream_current">Écran de veille actuel : %1$s</string>
     <string name="dream_starts_after">démarre après %1$s sans activité</string>
-
-    <!-- Diagnostic (2.1) -->
-    <string name="diagnostics">Diagnostic</string>
-    <string name="diagnostics_desc">Pourquoi l\'application s\'est fermée la dernière fois (reste sur cet appareil)</string>
-    <string name="diagnostics_sub">Les dernières fermetures inattendues de l\'application, avec la raison. Rien n\'est envoyé.</string>
-    <string name="diagnostics_empty">Rien d\'enregistré : l\'application ne s\'est pas fermée de façon inattendue.</string>
-    <string name="diagnostics_footer">Astuce : un plantage est noté ici immédiatement ; ce qu\'Android signale (mémoire, ANR) apparaît au démarrage suivant.</string>
-    <string name="diag_crash">Plantage (erreur dans l\'application)</string>
-    <string name="diag_crash_native">Plantage (code natif)</string>
-    <string name="diag_anr">Ne répond plus (ANR)</string>
-    <string name="diag_memory">Fermée par Android : mémoire insuffisante</string>
-    <string name="diag_signal">Arrêtée (signal, p. ex. pendant une mise à jour)</string>
-    <string name="diag_user">Arrêtée par l\'utilisateur ou le système</string>
-    <string name="diag_system">Fermée par le système</string>
-    <string name="diag_caught">Erreur interceptée (l\'application a continué)</string>
-    <string name="diag_other">Autre</string>
-    <string name="diag_foreground">au premier plan</string>
 
     <!-- 2.5: wereldkaart (werelddelen/regio's), scrollbalk, personen -->
     <string name="continent_europe">Europe</string>

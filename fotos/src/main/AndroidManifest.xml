@@ -21,47 +21,18 @@
         android:theme="@style/Theme.Photos"
         android:usesCleartextTraffic="true">
 
-        <!-- The activity itself is not in the launcher: the aliases below handle that (name + icon + banner per
-             "appearance", see Settings.kt/Appearance). Exactly one alias is enabled; default "Photos". Labels and
-             banners are translated (values-xx, drawable-xx-nodpi) and follow the launcher's system language. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
-            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
-        <activity-alias android:name=".Photos" android:targetActivity=".MainActivity" android:exported="true" android:enabled="true"
-            android:label="@string/alias_photos" android:icon="@mipmap/ic_launcher" android:banner="@mipmap/tv_banner">
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity-alias>
-        <activity-alias android:name=".PhotoAlbum" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
-            android:label="@string/alias_album" android:icon="@mipmap/ic_album" android:banner="@drawable/banner_album">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-        <activity-alias android:name=".Memories" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
-            android:label="@string/alias_memories" android:icon="@mipmap/ic_herinneringen" android:banner="@drawable/banner_herinneringen">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
-        <activity-alias android:name=".Family" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
-            android:label="@string/alias_family" android:icon="@mipmap/ic_familie" android:banner="@drawable/banner_familie">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity-alias>
+        </activity>
 
         <!-- Screensaver (DreamService, see Dream.kt). The label is what system settings show where a picker list
              exists; dream.xml links the gear icon to the app's settings. -->

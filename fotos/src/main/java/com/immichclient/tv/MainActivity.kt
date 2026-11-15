@@ -82,7 +82,6 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Language.start(this)
-        Diagnostics.start(this)
         Settings.load(this, null)
         // Coil: single ImageLoader for the app + screensaver, sharing OkHttp client (auth header + timeout) and caches
         SingletonImageLoader.setSafe { ctx ->
@@ -182,9 +181,8 @@ enum class Section(@StringRes val label: Int, val icon: ImageVector) {
     SETTINGS(R.string.section_settings, Icons.Filled.Settings),
 }
 
-/** Active overlays (diagnostics, etc.) so Back closes them before navigating. */
+/** Active overlays so Back closes them before navigating. */
 object Overlays {
-    var diagnostics by mutableStateOf(false)
     var openCount by mutableIntStateOf(0)
         private set
 
@@ -297,7 +295,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
 
     fun screenFor(s: Section): Screen = sectionCache.getOrPut(s) {
         when (s) {
-            Section.PHOTOS -> Screen.Timeline(ctx.getString(Settings.appearance.label), null, Filter(), true, Settings.newestFirst, scope)
+            Section.PHOTOS -> Screen.Timeline(ctx.getString(R.string.section_photos), null, Filter(), true, Settings.newestFirst, scope)
             Section.MEMORIES -> Screen.Memories(scope)
             Section.SEARCH -> Screen.Search(scope)
             Section.EXPLORE -> Screen.Explore(scope)
@@ -347,7 +345,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
     }
 
     // Long Back launches screensaver when on a top-level screen without viewer
-    val onTop = stack.size <= 1 && viewer == null && !Overlays.diagnostics
+    val onTop = stack.size <= 1 && viewer == null
     DisposableEffect(onTop) { Keys.longBack = onTop; onDispose { Keys.longBack = false } }
 
     // Refresh permissions status when returning from system settings
@@ -361,9 +359,8 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
     }
 
     // Back handling: close overlays -> close viewer -> pop stack -> open drawer -> exit
-    BackHandler(enabled = Overlays.diagnostics || viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Open) {
+    BackHandler(enabled = viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Open) {
         when {
-            Overlays.diagnostics -> Overlays.diagnostics = false
             viewer != null -> {
                 val (vs, onClose) = viewer!!
                 val last = vs.source.at(vs.index)
@@ -398,7 +395,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                 ) {
                     val drawerOpen = drawerState.currentValue == DrawerValue.Open
                     Section.entries.forEach { sec ->
-                        val label = if (sec == Section.PHOTOS) stringResource(Settings.appearance.label) else stringResource(sec.label)
+                        val label = stringResource(sec.label)
                         NavigationDrawerItem(
                             selected = activeSection == sec && stack.size == 1,
                             onClick = {
@@ -470,10 +467,6 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                     },
                 )
             }
-        }
-
-        if (Overlays.diagnostics) {
-            DiagnosticsOverlay { Overlays.diagnostics = false }
         }
     }
 }

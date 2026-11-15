@@ -25,7 +25,6 @@ A fast, remote-friendly client for [Immich](https://immich.app) for Android TV b
 - **Favorites**.
 - **Screensaver**: your photos as the system screensaver, with clock, country map and countdown ring. See [Screensaver](#screensaver).
 - **Scroll bar** with the position in your whole library (month, photo number, years). Move onto it with ▶ to jump through months and years quickly.
-- **Diagnostics** under Settings → About: the reason the app last stopped, kept on the device only.
 - **Settings**: slideshow, viewer, timeline, map, accent colour, app name and icon, greeting, start screen and more. See [Settings](#settings).
 - **Languages**: English, Dutch, German, French and Spanish, with a language picker on first start.
 - **Easy pairing**: scan a QR code with your phone and log in. No typing of long API keys with the remote.
@@ -217,7 +216,7 @@ or set the environment variables `IMMICHCLIENT_KEYSTORE`, `IMMICHCLIENT_KEYSTORE
 ### Notes for developers
 
 - Kotlin, Jetpack Compose for TV (`androidx.tv:tv-material`), [Coil 3](https://coil-kt.github.io/coil/), [Media3/ExoPlayer](https://developer.android.com/media/media3) and [MapLibre Native](https://maplibre.org/).
-- Source code identifiers and comments are in Dutch. User-facing strings live in `res/values*/strings.xml`. To add a language, add a `values-xx/strings.xml`, add the code to `resourceConfigurations` in `fotos/build.gradle.kts` and to the list in `Taal.kt`, and generate localized banners with `fotos/banners.py`.
+- Source code identifiers and comments are in Dutch. User-facing strings live in `res/values*/strings.xml`. To add a language, add a `values-xx/strings.xml`, add the code to `resourceConfigurations` in `fotos/build.gradle.kts` and to the list in `Taal.kt`.
 - The app is tuned for 2 GB TV boxes: a fixed, small image cache, previews decoded at screen size, small video buffers and a lazily loaded timeline. Keep memory usage in mind when adding features.
 - `fotos/landen_bin.py` builds `assets/landen.bin` (country outlines for the map in the viewer) from Natural Earth data.
 

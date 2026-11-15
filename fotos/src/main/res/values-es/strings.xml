@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Fotos</string>
-    <string name="alias_photos">Fotos</string>
-    <string name="alias_album">Álbum de fotos</string>
-    <string name="alias_memories">Recuerdos</string>
-    <string name="alias_family">Fotos familiares</string>
-    <string name="appearance_photos">Azul, fotos apiladas (predeterminado)</string>
-    <string name="appearance_album">Naranja cálido, álbum abierto</string>
-    <string name="appearance_memories">Morado, foto con estrella</string>
-    <string name="appearance_family">Verde, foto con corazón</string>
+    <string name="app_name">Immich</string>
 
     <string name="pattern_month_year">MMMM \'de\' yyyy</string>
     <string name="pattern_month_short">MMM yyyy</string>
@@ -229,8 +221,6 @@
     <string name="color_pink">Rosa</string>
     <string name="color_purple">Morado</string>
     <string name="color_gray">Gris</string>
-    <string name="name_and_icon">Nombre e icono</string>
-    <string name="name_and_icon_desc">%s. También cambia el mosaico del lanzador (se actualiza en unos segundos)</string>
     <string name="group_storage">Almacenamiento</string>
     <string name="clear_image_cache">Vaciar la caché de imágenes</string>
     <string name="cache_size">"%1$s MB en disco  ·  %2$s MB en memoria"</string>
@@ -374,7 +364,7 @@
     <string name="minutes">%d min</string>
 
     <!-- Salvapantallas (2.1) -->
-    <string name="dream_name">Fotos (salvapantallas)</string>
+    <string name="dream_name">Immich (salvapantallas)</string>
     <string name="group_screensaver">Salvapantallas</string>
     <string name="screensaver">Salvapantallas</string>
     <string name="dream_on_desc">Usar esta aplicación como salvapantallas de este dispositivo</string>
@@ -447,23 +437,6 @@
     <string name="dream_net_no">La depuración por red está desactivada (necesaria para «Configurar automáticamente»)</string>
     <string name="dream_current">Salvapantallas actual: %1$s</string>
     <string name="dream_starts_after">se inicia tras %1$s sin actividad</string>
-
-    <!-- Diagnóstico (2.1) -->
-    <string name="diagnostics">Diagnóstico</string>
-    <string name="diagnostics_desc">Por qué se cerró la aplicación la última vez (se queda en este dispositivo)</string>
-    <string name="diagnostics_sub">Las últimas veces que la aplicación se cerró inesperadamente, con el motivo. No se envía nada.</string>
-    <string name="diagnostics_empty">Nada registrado: la aplicación no se ha cerrado inesperadamente.</string>
-    <string name="diagnostics_footer">Consejo: un fallo se anota aquí al instante; lo que informa Android (memoria, ANR) aparece en el siguiente inicio.</string>
-    <string name="diag_crash">Fallo (error en la aplicación)</string>
-    <string name="diag_crash_native">Fallo (código nativo)</string>
-    <string name="diag_anr">No responde (ANR)</string>
-    <string name="diag_memory">Cerrada por Android: poca memoria</string>
-    <string name="diag_signal">Terminada (señal, p. ej. durante una actualización)</string>
-    <string name="diag_user">Detenida por el usuario o el sistema</string>
-    <string name="diag_system">Cerrada por el sistema</string>
-    <string name="diag_caught">Error capturado (la aplicación siguió funcionando)</string>
-    <string name="diag_other">Otro</string>
-    <string name="diag_foreground">en primer plano</string>
 
     <!-- 2.5: wereldkaart (werelddelen/regio's), scrollbalk, personen -->
     <string name="continent_europe">Europa</string>
