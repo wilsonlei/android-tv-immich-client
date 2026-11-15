@@ -235,31 +235,34 @@ fun ScreensaverHulp(sluit: () -> Unit) {
 
     // kop + toestand staan vast bovenaan; daaronder scrollen de knoppen en de uitleg (anders schuift de toestand
     // uit beeld zodra de focus op een knop komt)
-    Column(Modifier.fillMaxSize().background(Color(0xF60A0A0A)).focusVangen().padding(start = 64.dp, end = 64.dp, top = 30.dp)) {
-        Text(stringResource(R.string.dream_instellen), style = MaterialTheme.typography.headlineMedium, color = Kleur.tekst)
-        Text(stringResource(R.string.dream_instellen_sub), style = MaterialTheme.typography.bodyMedium, color = Kleur.zacht, modifier = Modifier.padding(bottom = 10.dp))
-        Column(Modifier.fillMaxWidth().background(Kleur.vlak, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Row {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Vinkje(actief, stringResource(if (actief) R.string.dream_status_aan else R.string.dream_status_uit))
-                    Vinkje(mag, stringResource(if (mag) R.string.dream_recht_ja else R.string.dream_recht_nee))
+    Column(Modifier.fillMaxSize().background(Color(0xF60A0A0A)).focusVangen().padding(top = 30.dp)) {
+        Column(Modifier.fillMaxWidth().padding(horizontal = 64.dp)) {
+            Text(stringResource(R.string.dream_instellen), style = MaterialTheme.typography.headlineMedium, color = Kleur.tekst)
+            Text(stringResource(R.string.dream_instellen_sub), style = MaterialTheme.typography.bodyMedium, color = Kleur.zacht, modifier = Modifier.padding(bottom = 10.dp))
+            Column(Modifier.fillMaxWidth().background(Kleur.vlak, RoundedCornerShape(12.dp)).padding(horizontal = 16.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Row {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Vinkje(actief, stringResource(if (actief) R.string.dream_status_aan else R.string.dream_status_uit))
+                        Vinkje(mag, stringResource(if (mag) R.string.dream_recht_ja else R.string.dream_recht_nee))
+                    }
+                    Column(Modifier.weight(0.7f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Vinkje(ontw, stringResource(if (ontw) R.string.dream_ontw_ja else R.string.dream_ontw_nee))
+                        Vinkje(usb, stringResource(if (usb) R.string.dream_usb_ja else R.string.dream_usb_nee))
+                        Vinkje(netwerk, stringResource(if (netwerk) R.string.dream_net_ja else R.string.dream_net_nee))
+                    }
                 }
-                Column(Modifier.weight(0.7f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Vinkje(ontw, stringResource(if (ontw) R.string.dream_ontw_ja else R.string.dream_ontw_nee))
-                    Vinkje(usb, stringResource(if (usb) R.string.dream_usb_ja else R.string.dream_usb_nee))
-                    Vinkje(netwerk, stringResource(if (netwerk) R.string.dream_net_ja else R.string.dream_net_nee))
-                }
+                val tijd = startNa?.let { ms -> if (ms >= 60_000) stringResource(R.string.minuten, ms / 60_000) else stringResource(R.string.seconden, ms / 1000) }
+                val regels = listOfNotNull(
+                    nuNaam?.takeIf { !actief }?.let { stringResource(R.string.dream_nu, it) },
+                    tijd?.takeIf { startNa!! < 24 * 3_600_000 }?.let { stringResource(R.string.dream_start_na, it) },
+                )
+                if (regels.isNotEmpty()) Text(regels.joinToString("  ·  "), style = MaterialTheme.typography.bodySmall, color = Kleur.zacht, modifier = Modifier.padding(start = 32.dp), maxLines = 1)
             }
-            val tijd = startNa?.let { ms -> if (ms >= 60_000) stringResource(R.string.minuten, ms / 60_000) else stringResource(R.string.seconden, ms / 1000) }
-            val regels = listOfNotNull(
-                nuNaam?.takeIf { !actief }?.let { stringResource(R.string.dream_nu, it) },
-                tijd?.takeIf { startNa!! < 24 * 3_600_000 }?.let { stringResource(R.string.dream_start_na, it) },
-            )
-            if (regels.isNotEmpty()) Text(regels.joinToString("  ·  "), style = MaterialTheme.typography.bodySmall, color = Kleur.zacht, modifier = Modifier.padding(start = 32.dp), maxLines = 1)
         }
         LazyColumn(
             Modifier.fillMaxWidth().weight(1f),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 12.dp, bottom = 36.dp),
+            // Keep horizontal inset in contentPadding so 1.1x focused buttons are not clipped by LazyColumn bounds.
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(start = 64.dp, end = 64.dp, top = 12.dp, bottom = 36.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // directe knoppen
@@ -293,7 +296,7 @@ fun ScreensaverHulp(sluit: () -> Unit) {
                 Text(stringResource(R.string.dream_stap4), style = MaterialTheme.typography.bodyMedium, color = Kleur.zacht, modifier = Modifier.padding(top = 8.dp))
             }
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 6.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(28.dp), modifier = Modifier.padding(top = 6.dp)) {
                     if (kanOver) Knop(stringResource(R.string.dream_open_over), stringResource(R.string.dream_open_over_uitleg), Modifier.weight(1f)) { Screensaver.open(ctx, Screensaver.ACTIE_OVER) }
                     if (kanOntw) Knop(stringResource(R.string.dream_open_ontw), stringResource(R.string.dream_open_ontw_uitleg), Modifier.weight(1f)) { Screensaver.open(ctx, Screensaver.ACTIE_ONTWIKKELAAR) }
                 }

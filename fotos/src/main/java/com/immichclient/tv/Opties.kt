@@ -345,9 +345,9 @@ private fun Regel(titel: String, uitleg: String, modifier: Modifier = Modifier, 
     var focus by remember { mutableStateOf(false) }
     Surface(
         onClick = onKlik, modifier = modifier.fillMaxWidth().onFocusChanged { focus = it.isFocused },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
-        scale = ClickableSurfaceDefaults.scale(focusedScale = 1f),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Kleur.vlak, contentColor = Kleur.tekst, focusedContainerColor = Kleur.primair, focusedContentColor = Kleur.opPrimair),
+        shape = ButtonStyle.shape,
+        scale = ButtonStyle.scale(focusedScale = 1f),
+        colors = ButtonStyle.colors,
     ) {
         Row(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f).padding(end = 16.dp)) {

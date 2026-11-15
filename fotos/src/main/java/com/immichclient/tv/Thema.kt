@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.Icon
@@ -79,6 +80,18 @@ object Kleur {
     val opPrimair get() = Instellingen.accent.opPrimair
     val tekst = Color(0xFFE5E7EB)
     val zacht = Color(0xFFA1A1AA)
+}
+
+/** Shared button style defaults for TV clickable surfaces so buttons stay consistent across the app. */
+object ButtonStyle {
+    val shape @Composable get() = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp))
+    @Composable fun scale(focusedScale: Float = 1.1f) = ClickableSurfaceDefaults.scale(focusedScale = focusedScale)
+    val colors @Composable get() = ClickableSurfaceDefaults.colors(
+        containerColor = Kleur.vlak,
+        contentColor = Kleur.tekst,
+        focusedContainerColor = Kleur.primair,
+        focusedContentColor = Kleur.opPrimair,
+    )
 }
 
 @OptIn(ExperimentalTextApi::class)

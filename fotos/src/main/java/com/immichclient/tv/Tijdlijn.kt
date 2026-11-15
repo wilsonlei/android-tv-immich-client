@@ -455,13 +455,14 @@ private fun DatumKiezer(staat: TijdlijnStaat, sluit: () -> Unit, kies: (Int) -> 
 }
 
 @Composable
-fun Knop(titel: String, sub: String?, modifier: Modifier = Modifier, onKlik: () -> Unit) {
+fun Knop(titel: String, sub: String?, modifier: Modifier = Modifier, focusedScale: Float = 1.1f, onKlik: () -> Unit) {
     // tekstkleur zelf zetten: de kleur uit de typografie wint anders van de contentkleur (lichte tekst op lichtblauw)
     var focus by remember { mutableStateOf(false) }
     Surface(
         onClick = onKlik, modifier = modifier.height(64.dp).onFocusChanged { focus = it.isFocused },
-        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(12.dp)),
-        colors = ClickableSurfaceDefaults.colors(containerColor = Kleur.vlak, focusedContainerColor = Kleur.primair, focusedContentColor = Kleur.opPrimair),
+        shape = ButtonStyle.shape,
+        scale = ButtonStyle.scale(focusedScale),
+        colors = ButtonStyle.colors,
     ) {
         Column(Modifier.fillMaxSize().padding(horizontal = 14.dp), verticalArrangement = Arrangement.Center) {
             Text(titel, style = MaterialTheme.typography.titleMedium, color = if (focus) Kleur.opPrimair else Kleur.tekst, maxLines = 1)
