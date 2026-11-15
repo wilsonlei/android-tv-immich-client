@@ -509,4 +509,5 @@
     <string name="perm_person_read">Personen</string>
     <string name="perm_map_read">Wereldkaart</string>
     <string name="perm_folder_read">Mappen</string>
+    <string name="press_back_to_exit">Druk nogmaals op Terug om af te sluiten</string>
 </resources>

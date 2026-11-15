@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -47,9 +48,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.nativeKeyCode
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -360,8 +367,9 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
         onDispose { lifecycle.removeObserver(obs) }
     }
 
-    // Back handling: close overlays -> close viewer -> pop stack -> open drawer -> exit
-    BackHandler(enabled = viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Closed) {
+    // Back handling: close viewer -> pop stack -> open drawer -> press Back twice in open drawer to exit
+    var lastBackAt by remember { mutableStateOf(0L) }
+    BackHandler {
         when {
             viewer != null -> {
                 val (vs, onClose) = viewer!!
@@ -372,27 +380,52 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                 onClose?.invoke()
             }
             stack.size > 1 -> stack.removeAt(stack.lastIndex)
-            drawerState.currentValue == DrawerValue.Closed -> scope.launch { drawerState.setValue(DrawerValue.Open) }
+            drawerState.currentValue == DrawerValue.Closed -> {
+                lastBackAt = 0L
+                scope.launch { drawerState.setValue(DrawerValue.Open) }
+            }
+            else -> {
+                val now = SystemClock.uptimeMillis()
+                if (now - lastBackAt < 2000L) {
+                    onExit()
+                } else {
+                    lastBackAt = now
+                    Toast.makeText(ctx, R.string.press_back_to_exit, Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
-    // Drawer focus items (to focus language after restart)
+    // Drawer focus items: only activeSection is focusable on the first open frame to prevent a 1-frame flash on the first item
     val drawerFocus = remember { Section.entries.associateWith { FocusRequester() } }
+    var drawerReady by remember { mutableStateOf(false) }
     LaunchedEffect(drawerState.currentValue) {
         if (drawerState.currentValue == DrawerValue.Open) {
-            delay(50)
             runCatching { drawerFocus[activeSection]?.requestFocus() }
+            drawerReady = true
+        } else {
+            drawerReady = false
+            lastBackAt = 0L
         }
     }
 
     Box(Modifier.fillMaxSize().background(AppColors.background)) {
         ModalNavigationDrawer(
             drawerState = drawerState,
+            modifier = Modifier.onPreviewKeyEvent { e ->
+                if (e.type == KeyEventType.KeyDown && e.key.nativeKeyCode == KeyEvent.KEYCODE_MENU && viewer == null && Overlays.openCount == 0) {
+                    scope.launch {
+                        drawerState.setValue(if (drawerState.currentValue == DrawerValue.Open) DrawerValue.Closed else DrawerValue.Open)
+                    }
+                    true
+                } else false
+            },
             drawerContent = { value ->
                 Column(
                     Modifier
                         .fillMaxHeight()
                         .background(if (value == DrawerValue.Open) AppColors.surface else AppColors.background)
+                        .focusProperties { canFocus = value == DrawerValue.Open }
                         .padding(12.dp)
                         .selectableGroup(),
                 ) {
@@ -408,7 +441,9 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                                 scope.launch { drawerState.setValue(DrawerValue.Closed) }
                             },
                             leadingContent = { Icon(sec.icon, null, Modifier.size(20.dp)) },
-                            modifier = Modifier.focusRequester(drawerFocus[sec]!!),
+                            modifier = Modifier
+                                .focusRequester(drawerFocus[sec]!!)
+                                .focusProperties { canFocus = drawerReady || sec == activeSection },
                             colors = NavigationDrawerItemDefaults.colors(
                                 selectedContainerColor = AppColors.primary.copy(alpha = 0.22f),
                                 selectedContentColor = AppColors.primary,

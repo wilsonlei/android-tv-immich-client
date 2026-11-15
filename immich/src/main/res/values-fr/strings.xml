@@ -516,4 +516,5 @@
     <string name="perm_person_read">Personnes</string>
     <string name="perm_map_read">Carte du monde</string>
     <string name="perm_folder_read">Dossiers</string>
+    <string name="press_back_to_exit">Appuyez à nouveau sur Retour pour quitter</string>
 </resources>

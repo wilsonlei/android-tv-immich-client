@@ -526,4 +526,5 @@
     <string name="perm_person_read">People</string>
     <string name="perm_map_read">World map</string>
     <string name="perm_folder_read">Folders</string>
+    <string name="press_back_to_exit">Press Back again to exit</string>
 </resources>
