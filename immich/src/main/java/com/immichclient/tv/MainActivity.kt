@@ -20,10 +20,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Explore
@@ -57,6 +58,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
@@ -218,15 +220,15 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun applyTestExtras(intent: Intent) {
-        if (intent.hasExtra("kaart_texture")) mapTexture = intent.getBooleanExtra("kaart_texture", false)
-        if (intent.hasExtra("kaart_lod")) mapLod = intent.getIntExtra("kaart_lod", -1)
-        if (intent.hasExtra("kaart_fps")) mapFps = intent.getIntExtra("kaart_fps", 0)
-        if (intent.hasExtra("kaart_alles")) mapAllLayers = intent.getBooleanExtra("kaart_alles", false)
-        if (intent.hasExtra("kaart_res")) mapRes = intent.getIntExtra("kaart_res", 0)
-        if (intent.hasExtra("kaart_vlucht")) mapFlight = intent.getIntExtra("kaart_vlucht", -2)
-        if (intent.hasExtra("kaart_cache")) mapCache = intent.getBooleanExtra("kaart_cache", false)
-        if (intent.hasExtra("kaart_prefetch")) mapPrefetch = intent.getIntExtra("kaart_prefetch", -1)
-        if (intent.hasExtra("video_zonder_placeholder")) videoWithoutPlaceholder = intent.getBooleanExtra("video_zonder_placeholder", false)
+        if (intent.hasExtra("map_texture")) mapTexture = intent.getBooleanExtra("map_texture", false)
+        if (intent.hasExtra("map_lod")) mapLod = intent.getIntExtra("map_lod", -1)
+        if (intent.hasExtra("map_fps")) mapFps = intent.getIntExtra("map_fps", 0)
+        if (intent.hasExtra("map_all_layers")) mapAllLayers = intent.getBooleanExtra("map_all_layers", false)
+        if (intent.hasExtra("map_res")) mapRes = intent.getIntExtra("map_res", 0)
+        if (intent.hasExtra("map_flight")) mapFlight = intent.getIntExtra("map_flight", -2)
+        if (intent.hasExtra("map_cache")) mapCache = intent.getBooleanExtra("map_cache", false)
+        if (intent.hasExtra("map_prefetch")) mapPrefetch = intent.getIntExtra("map_prefetch", -1)
+        if (intent.hasExtra("video_without_placeholder")) videoWithoutPlaceholder = intent.getBooleanExtra("video_without_placeholder", false)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -319,7 +321,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
 
     // Handle deep-link intent extras (e.g. from launcher shortcuts or test extras)
     LaunchedEffect(intent) {
-        val sec = intent.getStringExtra("sectie")?.let { name -> Section.entries.firstOrNull { it.name.equals(name, true) } }
+        val sec = intent.getStringExtra("section")?.let { name -> Section.entries.firstOrNull { it.name.equals(name, true) } }
         if (sec != null) {
             activeSection = sec
             stack.clear()
@@ -359,7 +361,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
     }
 
     // Back handling: close overlays -> close viewer -> pop stack -> open drawer -> exit
-    BackHandler(enabled = viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Open) {
+    BackHandler(enabled = viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Closed) {
         when {
             viewer != null -> {
                 val (vs, onClose) = viewer!!
@@ -370,7 +372,7 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                 onClose?.invoke()
             }
             stack.size > 1 -> stack.removeAt(stack.lastIndex)
-            drawerState.currentValue == DrawerValue.Open -> scope.launch { drawerState.setValue(DrawerValue.Closed) }
+            drawerState.currentValue == DrawerValue.Closed -> scope.launch { drawerState.setValue(DrawerValue.Open) }
         }
     }
 
@@ -386,15 +388,16 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
     Box(Modifier.fillMaxSize().background(AppColors.background)) {
         ModalNavigationDrawer(
             drawerState = drawerState,
-            drawerContent = {
+            drawerContent = { value ->
                 Column(
                     Modifier
-                        .background(Color(0xF2121216))
+                        .fillMaxHeight()
+                        .background(if (value == DrawerValue.Open) AppColors.surface else AppColors.background)
                         .padding(12.dp)
-                        .width(220.dp),
+                        .selectableGroup(),
                 ) {
-                    val drawerOpen = drawerState.currentValue == DrawerValue.Open
                     Section.entries.forEach { sec ->
+                        if (sec == Section.SETTINGS) Spacer(Modifier.weight(1f))
                         val label = stringResource(sec.label)
                         NavigationDrawerItem(
                             selected = activeSection == sec && stack.size == 1,
@@ -408,37 +411,39 @@ fun PhotosApp(intent: Intent, onExit: () -> Unit) {
                             modifier = Modifier.focusRequester(drawerFocus[sec]!!),
                             colors = NavigationDrawerItemDefaults.colors(
                                 selectedContainerColor = AppColors.primary.copy(alpha = 0.22f),
+                                selectedContentColor = AppColors.primary,
                                 focusedContainerColor = AppColors.primary,
                                 focusedContentColor = AppColors.onPrimary,
                             ),
                         ) {
-                            if (drawerOpen) Text(label, maxLines = 1)
+                            Text(label, maxLines = 1, color = LocalContentColor.current)
                         }
                     }
-                    Spacer(Modifier.weight(1f))
                 }
             },
         ) {
-            when (val cur = stack.lastOrNull()) {
-                is Screen.Timeline -> TimelineScreen(cur, nav)
-                is Screen.Albums -> AlbumsScreen(cur.state, nav)
-                is Screen.Explore -> ExploreScreen(cur.state, nav)
-                is Screen.Search -> SearchScreen(cur.state, nav)
-                is Screen.Memories -> MemoriesScreen(cur.state, nav)
-                is Screen.Map -> MapScreen(cur.state, nav)
-                is Screen.MapPhotos -> MapPhotosScreen(cur, nav)
-                is Screen.People -> PeopleScreen(cur.state, nav)
-                is Screen.Folders -> FoldersScreen(cur, nav)
-                is Screen.SettingsScreen -> SettingsScreen(
-                    reconnect = { testPairing = true },
-                    disconnected = {
-                        sectionCache.clear()
-                        stack.clear()
-                        connected = false
-                    },
-                )
-                is Screen.AssetList -> AssetListScreen(cur, nav)
-                null -> {}
+            Box(Modifier.fillMaxSize().padding(start = 80.dp)) {
+                when (val cur = stack.lastOrNull()) {
+                    is Screen.Timeline -> TimelineScreen(cur, nav)
+                    is Screen.Albums -> AlbumsScreen(cur.state, nav)
+                    is Screen.Explore -> ExploreScreen(cur.state, nav)
+                    is Screen.Search -> SearchScreen(cur.state, nav)
+                    is Screen.Memories -> MemoriesScreen(cur.state, nav)
+                    is Screen.Map -> MapScreen(cur.state, nav)
+                    is Screen.MapPhotos -> MapPhotosScreen(cur, nav)
+                    is Screen.People -> PeopleScreen(cur.state, nav)
+                    is Screen.Folders -> FoldersScreen(cur, nav)
+                    is Screen.SettingsScreen -> SettingsScreen(
+                        reconnect = { testPairing = true },
+                        disconnected = {
+                            sectionCache.clear()
+                            stack.clear()
+                            connected = false
+                        },
+                    )
+                    is Screen.AssetList -> AssetListScreen(cur, nav)
+                    null -> {}
+                }
             }
         }
 

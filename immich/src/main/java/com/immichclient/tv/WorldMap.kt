@@ -159,7 +159,7 @@ const val SAT_ATTRIBUTION = "EOxCloudless cloudless.eox.at by EOX IT Services Gm
 /** Currently open MapView (when the section is visible): flush its tile cache on low memory (App.onTrimMemory). */
 @Volatile var openMap: MapView? = null
 /**
- * Test extras (`--ez kaart_texture true`, `--ei kaart_lod 0`, `--ei kaart_fps 30`, `--ez kaart_alles true`): TextureView
+ * Test extras (`--ez map_texture true`, `--ei map_lod 0`, `--ei map_fps 30`, `--ez map_all_layers true`): TextureView
  * instead of SurfaceView, tile LOD shift, max map fps, keep all style layers.
  * Measurement (NVIDIA Shield, zoom sequence): LOD shift -1 (tiles one level lower, 4x fewer tiles) improved
  * the map from ~30 to ~55 fps and dropped frames in screen recording from 19% to 6%.
@@ -175,7 +175,7 @@ const val SAT_ATTRIBUTION = "EOxCloudless cloudless.eox.at by EOX IT Services Gm
 /**
  * MapLibre in-memory tile cache (parsed off-screen tiles). Measurement 21-10 (3x zoom sequence world -> 14 ->
  * Back): on = native heap 89 MB / PSS 167 MB, off = 62 MB / 143 MB, and map fps equal or slightly better (tiles
- * come from disk cache). Off by default; test: `--ez kaart_cache true`. Prefetch zoom delta: `--ei kaart_prefetch N`
+ * come from disk cache). Off by default; test: `--ez map_cache true`. Prefetch zoom delta: `--ei map_prefetch N`
  * (-1 = default 4; 1 showed no measurable difference).
  */
 @Volatile var mapCache = false

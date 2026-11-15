@@ -108,7 +108,7 @@ import coil3.compose.AsyncImage
 import kotlinx.coroutines.delay
 
 /**
- * Test (`--ez video_zonder_placeholder true`): simulates that this device cannot use a placeholder surface, like
+ * Test (`--ez video_without_placeholder true`): simulates that this device cannot use a placeholder surface, like
  * Media3 decides for many Fire TV models, among others (codecNeedsSetOutputSurfaceWorkaround). In that case, the decoder only starts
  * when there is a real surface.
  */
