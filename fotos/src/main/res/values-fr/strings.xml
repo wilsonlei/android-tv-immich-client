@@ -543,30 +543,4 @@
     <string name="recht_person_read">Personnes</string>
     <string name="recht_map_read">Carte du monde</string>
     <string name="recht_folder_read">Dossiers</string>
-    <string name="update_titel">La version %1$s est disponible</string>
-    <string name="update_sub">Vous avez la version %1$s</string>
-    <string name="update_downloaden">Téléchargement… %1$d%%</string>
-    <string name="update_installeren">Installation…</string>
-    <string name="update_toestemming">Autorisez d\'abord cette application à installer des mises à jour (sources inconnues), puis choisissez à nouveau Mettre à jour.</string>
-    <string name="update_toestemming_knop">Ouvrir le réglage</string>
-    <string name="update_fout">Échec de la mise à jour : %1$s</string>
-    <string name="update_nu">Mettre à jour</string>
-    <string name="update_later">Plus tard</string>
-    <string name="nieuw_titel">Nouveautés de la %1$s</string>
-    <string name="updates">Mises à jour</string>
-    <string name="update_beschikbaar">La version %1$s est disponible. OK pour mettre à jour</string>
-    <string name="update_bezig">Vérification…</string>
-    <string name="update_actueel">Vous avez la dernière version. OK pour vérifier à nouveau</string>
-    <string name="update_controleer">OK pour chercher une nouvelle version</string>
-    <string name="update_auto">Rechercher des mises à jour</string>
-    <string name="update_auto_uitleg">Chercher une nouvelle version sur GitHub au démarrage</string>
-    <string name="nieuw_regel">Nouveautés</string>
-    <string name="nieuw_regel_uitleg">Changements de cette version</string>
-    <string-array name="wat_nieuw">
-        <item>Carte dans l\'écran de veille : désactivée, petite ou grande</item>
-        <item>Écran de veille : choisir plusieurs albums et afficher l\'album propre de la photo (p. ex. « Anniversaire » au lieu de « Écran de veille »)</item>
-        <item>Écran de veille : plusieurs personnes, ou albums et personnes ensemble, à partir d\'une année, au hasard ou par date</item>
-        <item>Réglages : Essentiels ou Tous, pour une liste plus courte</item>
-        <item>Mises à jour : l\'application signale une nouvelle version et peut se mettre à jour</item>
-    </string-array>
 </resources>

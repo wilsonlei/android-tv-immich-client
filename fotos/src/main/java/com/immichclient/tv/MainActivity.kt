@@ -206,8 +206,6 @@ class MainActivity : ComponentActivity() {
             scrolBalkUit = intent.getBooleanExtra("geen_balk", false)
             videoZonderPlaceholder = intent.getBooleanExtra("video_zonder_placeholder", false)
             kaartCache = intent.getBooleanExtra("kaart_cache", kaartCache); kaartPrefetch = intent.getIntExtra("kaart_prefetch", -1)
-            // `--es update_test 2.0`: doen alsof die versie geïnstalleerd is (updatecheck/-venster testen)
-            Update.testVersie = intent.getStringExtra("update_test")
         }
         setContent { FotosThema { FotosApp(finish = ::finish, herstart = ::recreate, testIndex = testIndex, startSectie = startSectie, instelTest = instelTest, taalTest = taalTest) } }
     }
@@ -277,8 +275,6 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
     val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
     // rechten van de sleutel controleren; een nieuw ontbrekend recht één keer melden (overzicht met Opnieuw koppelen)
     androidx.compose.runtime.LaunchedEffect(Immich.stand) { kotlinx.coroutines.delay(1500); Rechten.controleer(); Rechten.meldNieuw(appCtx) }
-    // na een update één keer "Wat is er nieuw"; daarna (als dat aanstaat) kijken of er een nieuwere release is
-    androidx.compose.runtime.LaunchedEffect(Unit) { Update.bijStart(appCtx); kotlinx.coroutines.delay(4000); if (Instellingen.updateCheck) Update.controleer(appCtx, melden = true) }
     val wortels = remember { HashMap<Sectie, Scherm>() }
     var sectie by remember { mutableStateOf(startSectie) }
     val stapel = remember { mutableStateListOf<Scherm>() }
@@ -380,8 +376,8 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
         // Schermwissel (ook viewer open/dicht): even heeft niets focus en zou Android die aan het eerste focusbare
         // element geven = de lade (klapt kort open). Daarom is de lade tijdens de wissel niet focusbaar; het nieuwe
         // scherm pakt zijn focus zelf. De eerste compositie met een nieuw scherm telt al mee (`nieuw`), vóór de effect.
-        // popups (nieuw in deze versie, update, rechten) tellen ook als wissel: sluiten ze, dan gaat de focus terug naar de inhoud
-        val popup = Update.nieuwsOpen || Update.open || Rechten.open || Lagen.open > 0
+        // popups (rechten, lagen) tellen ook als wissel: sluiten ze, dan gaat de focus terug naar de inhoud
+        val popup = Rechten.open || Lagen.open > 0
         val wisselSleutel = Triple(scherm, kijker != null, popup)
         val laatsteSleutel = remember { androidx.compose.runtime.mutableStateOf(wisselSleutel) }
         val wisselt = remember { androidx.compose.runtime.mutableStateOf(false) }
@@ -469,8 +465,6 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
         }
         if (toetsen && kijker == null) ToetsenOverzicht { toetsen = false }
         if (Rechten.open && kijker == null) RechtenScherm(opnieuwKoppelen = { Rechten.open = false; instellen = true }) { Rechten.open = false }
-        if (Update.nieuwsOpen && kijker == null) NieuwsScherm { Update.nieuwsOpen = false }
-        else if (Update.open && kijker == null) UpdateScherm { Update.open = false }
         kijker?.let { (k, raster, naTerug) ->
             Kijker(
                 k,
@@ -485,5 +479,20 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
                 naTerug?.invoke()
             }
         }
+    }
+}
+
+/**
+ * Telt de open lagen (keuzelijsten, uitleg, popups). Sluit er een, dan heeft even niets focus en zou Android die aan
+ * de lade geven (klapt open); MainActivity houdt de lade dan even dicht en zet de focus terug op de inhoud.
+ */
+object Lagen {
+    var open by androidx.compose.runtime.mutableIntStateOf(0)
+        private set
+
+    /** Aanroepen bovenaan een laag-composable: telt mee zolang de laag in beeld is. */
+    @Composable
+    fun Open() {
+        androidx.compose.runtime.DisposableEffect(Unit) { open++; onDispose { open-- } }
     }
 }

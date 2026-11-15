@@ -536,30 +536,4 @@
     <string name="recht_person_read">Personen</string>
     <string name="recht_map_read">Weltkarte</string>
     <string name="recht_folder_read">Ordner</string>
-    <string name="update_titel">Version %1$s ist verfügbar</string>
-    <string name="update_sub">Du hast Version %1$s</string>
-    <string name="update_downloaden">Wird geladen… %1$d%%</string>
-    <string name="update_installeren">Wird installiert…</string>
-    <string name="update_toestemming">Erlaube dieser App zuerst, Updates zu installieren (unbekannte Quellen). Wähle dann erneut Aktualisieren.</string>
-    <string name="update_toestemming_knop">Einstellung öffnen</string>
-    <string name="update_fout">Aktualisierung fehlgeschlagen: %1$s</string>
-    <string name="update_nu">Jetzt aktualisieren</string>
-    <string name="update_later">Später</string>
-    <string name="nieuw_titel">Neu in %1$s</string>
-    <string name="updates">Updates</string>
-    <string name="update_beschikbaar">Version %1$s ist verfügbar. OK zum Aktualisieren</string>
-    <string name="update_bezig">Wird geprüft…</string>
-    <string name="update_actueel">Du hast die neueste Version. OK zum erneuten Prüfen</string>
-    <string name="update_controleer">OK, um nach einer neuen Version zu suchen</string>
-    <string name="update_auto">Nach Updates suchen</string>
-    <string name="update_auto_uitleg">Beim Start auf GitHub nach einer neuen Version suchen</string>
-    <string name="nieuw_regel">Was ist neu</string>
-    <string name="nieuw_regel_uitleg">Änderungen in dieser Version</string>
-    <string-array name="wat_nieuw">
-        <item>Landkarte im Bildschirmschoner: aus, klein oder groß</item>
-        <item>Bildschirmschoner: mehrere Alben wählen und den eigenen Albumnamen des Fotos zeigen (z. B. „Geburtstag“ statt „Bildschirmschoner“)</item>
-        <item>Bildschirmschoner: mehrere Personen oder Alben und Personen zusammen, ab einem bestimmten Jahr, zufällig oder nach Datum</item>
-        <item>Einstellungen: Einfach oder Alle, damit die Liste kurz bleibt</item>
-        <item>Updates: Die App meldet eine neue Version und kann sich selbst aktualisieren</item>
-    </string-array>
 </resources>

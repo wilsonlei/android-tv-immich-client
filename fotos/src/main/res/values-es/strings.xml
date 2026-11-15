@@ -543,30 +543,4 @@
     <string name="recht_person_read">Personas</string>
     <string name="recht_map_read">Mapa mundial</string>
     <string name="recht_folder_read">Carpetas</string>
-    <string name="update_titel">La versión %1$s está disponible</string>
-    <string name="update_sub">Tienes la versión %1$s</string>
-    <string name="update_downloaden">Descargando… %1$d%%</string>
-    <string name="update_installeren">Instalando…</string>
-    <string name="update_toestemming">Primero permite que esta app instale actualizaciones (orígenes desconocidos). Luego elige Actualizar de nuevo.</string>
-    <string name="update_toestemming_knop">Abrir ajuste</string>
-    <string name="update_fout">Error al actualizar: %1$s</string>
-    <string name="update_nu">Actualizar ahora</string>
-    <string name="update_later">Más tarde</string>
-    <string name="nieuw_titel">Novedades de la %1$s</string>
-    <string name="updates">Actualizaciones</string>
-    <string name="update_beschikbaar">La versión %1$s está disponible. OK para actualizar</string>
-    <string name="update_bezig">Comprobando…</string>
-    <string name="update_actueel">Tienes la última versión. OK para volver a comprobar</string>
-    <string name="update_controleer">OK para buscar una nueva versión</string>
-    <string name="update_auto">Buscar actualizaciones</string>
-    <string name="update_auto_uitleg">Buscar una nueva versión en GitHub al iniciar</string>
-    <string name="nieuw_regel">Novedades</string>
-    <string name="nieuw_regel_uitleg">Cambios en esta versión</string>
-    <string-array name="wat_nieuw">
-        <item>Mapa en el salvapantallas: desactivado, pequeño o grande</item>
-        <item>Salvapantallas: elegir varios álbumes y mostrar el álbum propio de la foto (p. ej. «Cumpleaños» en lugar de «Salvapantallas»)</item>
-        <item>Salvapantallas: varias personas, o álbumes y personas juntos, desde un año concreto, al azar o por fecha</item>
-        <item>Ajustes: Básicos o Todos, para que la lista sea corta</item>
-        <item>Actualizaciones: la app avisa de una nueva versión y puede actualizarse sola</item>
-    </string-array>
 </resources>

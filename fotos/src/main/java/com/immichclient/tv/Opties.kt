@@ -70,7 +70,6 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
     var bevestig by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var groetInvoer by remember { mutableStateOf(false) }
-    var controleren by remember { mutableStateOf(false) }
     // cachegrootte: schijf + geheugen, opnieuw gemeten na legen
     var cacheRonde by remember { mutableIntStateOf(0) }
     val cacheMaat = stringResource(R.string.cache_maat)
@@ -269,21 +268,6 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
         }
 
         groep(R.string.groep_over)
-        item {
-            val n = Update.nieuw
-            val uitleg = when {
-                n != null -> stringResource(R.string.update_beschikbaar, n.versie)
-                controleren -> stringResource(R.string.update_bezig)
-                Update.gecontroleerd -> stringResource(R.string.update_actueel)
-                else -> stringResource(R.string.update_controleer)
-            }
-            Actie(stringResource(R.string.updates), uitleg) {
-                if (n != null) Update.open = true
-                else if (!controleren) scope.launch { controleren = true; Update.controleer(ctx, melden = false); controleren = false; if (Update.nieuw != null) Update.open = true }
-            }
-        }
-        if (alles) schakel(R.string.update_auto, R.string.update_auto_uitleg, uitAan, Instellingen.updateCheck) { Instellingen.updateCheck = it }
-        item { Actie(stringResource(R.string.nieuw_regel), stringResource(R.string.nieuw_regel_uitleg)) { Update.nieuwsOpen = true } }
         item { Actie(stringResource(R.string.toetsen), stringResource(R.string.toetsen_uitleg)) { toetsen() } }
         item { Info(stringResource(R.string.app_regel, stringResource(Instellingen.uiterlijk.label)), stringResource(R.string.versie, versie)) }
         item { Info(stringResource(R.string.immich_server), immichVersie?.let { stringResource(R.string.versie, it) } ?: "…") }

@@ -90,8 +90,6 @@ object Instellingen {
     // ---- Instellingenscherm ----
     /** alle instellingen tonen (anders alleen de basis); per apparaat */
     var alleInstellingen by bool("alle_instellingen", false, perApparaat = true)
-    /** bij het starten kijken of er een nieuwe versie op GitHub staat; per apparaat */
-    var updateCheck by bool("update_check", true, perApparaat = true)
 
     // ---- Uiterlijk ----
     var accent by keuze("accent", Accent.BLAUW)
