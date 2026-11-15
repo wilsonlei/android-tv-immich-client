@@ -175,40 +175,52 @@ fun Scrollbar(
             if (hl != null) drawText(hl, topLeft = Offset(right - px - hl.size.width, y + 4.dp.toPx()), color = accent)
         }
         // the bar itself as a focus target (narrow, far right): ▶ at the right edge of the grid lands here
-        if (steps != null && steps.count > 0) androidx.compose.foundation.layout.Box(
-            Modifier.align(androidx.compose.ui.Alignment.CenterEnd).fillMaxHeight().width(28.dp)
-                .focusProperties { canFocus = scrollable() }
-                .onFocusChanged {
-                    if (it.isFocused && !focus) { choice.intValue = steps.current().coerceIn(0, steps.count - 1); start = choice.intValue; android.util.Log.i("Photos", "bar: focus (step $start of ${steps.count})") }
-                    focus = it.isFocused
-                }
-                .onPreviewKeyEvent { e ->
-                    val n = e.nativeKeyEvent
-                    val arrow = n.keyCode == KeyEvent.KEYCODE_DPAD_UP || n.keyCode == KeyEvent.KEYCODE_DPAD_DOWN
-                    val ok = n.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || n.keyCode == KeyEvent.KEYCODE_ENTER
-                    if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent arrow || ok || n.keyCode == KeyEvent.KEYCODE_DPAD_LEFT || n.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
-                    when {
-                        arrow -> {
-                            val d = if (n.keyCode == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
-                            val r = n.repeatCount
-                            // tap = one step; holding first ~10 steps/s, after ~1 s big jumps (year) ~6/s
-                            val next = when {
-                                r >= 14 -> if (r % 3 == 0) steps.bigStep(choice.intValue, d) else choice.intValue
-                                r > 0 && r % 2 == 1 -> choice.intValue
-                                else -> choice.intValue + d
-                            }
-                            choice.intValue = next.coerceIn(0, steps.count - 1)
-                            true
-                        }
-                        ok -> { android.util.Log.i("Photos", "bar: OK -> step ${choice.intValue}"); steps.go(choice.intValue); true }
-                        n.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> { if (choice.intValue != start) steps.go(choice.intValue) else steps.back(); true }
-                        n.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> true
-                        n.keyCode == KeyEvent.KEYCODE_BACK -> { steps.back(); true }
-                        else -> false
+        if (steps != null && steps.count > 0) {
+            var okDown by remember { mutableStateOf(false) }
+            androidx.compose.foundation.layout.Box(
+                Modifier.align(androidx.compose.ui.Alignment.CenterEnd).fillMaxHeight().width(28.dp)
+                    .focusProperties { canFocus = scrollable() }
+                    .onFocusChanged {
+                        if (it.isFocused && !focus) { choice.intValue = steps.current().coerceIn(0, steps.count - 1); start = choice.intValue; android.util.Log.i("Photos", "bar: focus (step $start of ${steps.count})") }
+                        if (!it.isFocused) okDown = false
+                        focus = it.isFocused
                     }
-                }
-                .focusable(),
-        )
+                    .onPreviewKeyEvent { e ->
+                        val n = e.nativeKeyEvent
+                        val arrow = n.keyCode == KeyEvent.KEYCODE_DPAD_UP || n.keyCode == KeyEvent.KEYCODE_DPAD_DOWN
+                        val ok = n.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || n.keyCode == KeyEvent.KEYCODE_ENTER
+                        if (e.type == KeyEventType.KeyUp && ok) {
+                            if (okDown) {
+                                okDown = false
+                                android.util.Log.i("Photos", "bar: OK -> step ${choice.intValue}")
+                                steps.go(choice.intValue)
+                            }
+                            return@onPreviewKeyEvent true
+                        }
+                        if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent arrow || ok || n.keyCode == KeyEvent.KEYCODE_DPAD_LEFT || n.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT
+                        when {
+                            arrow -> {
+                                val d = if (n.keyCode == KeyEvent.KEYCODE_DPAD_UP) -1 else 1
+                                val r = n.repeatCount
+                                // tap = one step; holding first ~10 steps/s, after ~1 s big jumps (year) ~6/s
+                                val next = when {
+                                    r >= 14 -> if (r % 3 == 0) steps.bigStep(choice.intValue, d) else choice.intValue
+                                    r > 0 && r % 2 == 1 -> choice.intValue
+                                    else -> choice.intValue + d
+                                }
+                                choice.intValue = next.coerceIn(0, steps.count - 1)
+                                true
+                            }
+                            ok -> { if (n.repeatCount == 0) okDown = true; true }
+                            n.keyCode == KeyEvent.KEYCODE_DPAD_LEFT -> { if (choice.intValue != start) steps.go(choice.intValue) else steps.back(); true }
+                            n.keyCode == KeyEvent.KEYCODE_DPAD_RIGHT -> true
+                            n.keyCode == KeyEvent.KEYCODE_BACK -> { steps.back(); true }
+                            else -> false
+                        }
+                    }
+                    .focusable(),
+            )
+        }
     }
 }
 
