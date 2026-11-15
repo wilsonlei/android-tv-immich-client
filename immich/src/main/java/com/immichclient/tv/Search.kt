@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Search
@@ -122,6 +123,18 @@ class SearchState(scope: CoroutineScope) {
     init {
         scope.launch { runCatching { Immich.people() }.onSuccess { people = it } }
         scope.launch { Immich.warmSearch() }
+    }
+
+    /** Reset back to initial state (suggestions, default filters/sort). */
+    fun reset() {
+        query = ""
+        mode = SearchMode.SMART
+        type = SearchType.ALL
+        order = SearchOrder.RELEVANCE
+        focusOnResult = false
+        res.clear()
+        res.grid.focusTarget = null
+        res.grid.lastFocus = null
     }
 
     /** Search without text, type only (all videos / all photos, by date). */
@@ -224,6 +237,15 @@ fun SearchScreen(state: SearchState, nav: Nav) {
                                 )
                             }
                         }
+                        if (state.query.isNotEmpty()) Surface(
+                            onClick = {
+                                state.reset()
+                                runCatching { fieldFocus.requestFocus() }
+                            },
+                            modifier = Modifier.size(56.dp),
+                            shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(28.dp)),
+                            colors = ClickableSurfaceDefaults.colors(containerColor = AppColors.surfaceHigh, focusedContainerColor = AppColors.primary, focusedContentColor = AppColors.onPrimary),
+                        ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Close, stringResource(R.string.clear_search)) } }
                         if (canVoice) Surface(
                             onClick = {
                                 runCatching {
@@ -240,12 +262,12 @@ fun SearchScreen(state: SearchState, nav: Nav) {
                             colors = ClickableSurfaceDefaults.colors(containerColor = AppColors.surfaceHigh, focusedContainerColor = AppColors.primary, focusedContentColor = AppColors.onPrimary),
                         ) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Icon(Icons.Filled.Mic, stringResource(R.string.voice_search)) } }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         for (m in SearchMode.entries) ChoiceChip(selected = state.mode == m, onClick = { state.mode = m; state.search(ctx) }, text = stringResource(m.label))
                         Spacer(Modifier.width(18.dp))
                         for (t in SearchType.entries) ChoiceChip(selected = state.type == t, onClick = { state.type = t; state.search(ctx) }, text = stringResource(t.label))
                     }
-                    if (state.res.assets.isNotEmpty()) Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (state.res.assets.isNotEmpty()) Row(Modifier.padding(horizontal = 8.dp, vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         for (o in SearchOrder.entries) ChoiceChip(selected = state.order == o, onClick = { state.order = o }, text = stringResource(o.label))
                     }
                     when {
