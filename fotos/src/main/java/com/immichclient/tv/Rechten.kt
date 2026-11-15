@@ -1,9 +1,14 @@
 package com.immichclient.tv
 
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -77,8 +82,14 @@ object Rechten {
         private set
     var bezig by mutableStateOf(false)
         private set
-    /** overzicht in beeld (MainActivity toont het) */
-    var open by mutableStateOf(false)
+    /** User chose Reconnect in RechtenActivity (MainActivity opens the pairing screen). */
+    var reconnectRequested by mutableStateOf(false)
+
+    fun show(context: Context) {
+        val intent = Intent(context, RechtenActivity::class.java)
+        if (context !is Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        runCatching { context.startActivity(intent) }
+    }
 
     suspend fun controleer() {
         if (Immich.sleutel.isBlank()) return
@@ -110,7 +121,23 @@ object Rechten {
         val nu = mist.sorted().joinToString(",")
         val eerder = p.getString(sleutel, "").orEmpty()
         if (nu != eerder) p.edit().putString(sleutel, nu).apply()
-        if (mist.isNotEmpty() && nu != eerder) open = true
+        if (mist.isNotEmpty() && nu != eerder) show(c)
+    }
+}
+
+class RechtenActivity : ComponentActivity() {
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(Taal.wrap(base))
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent {
+            FotosThema {
+                RechtenScherm(
+                    opnieuwKoppelen = { Rechten.reconnectRequested = true; finish() },
+                    sluit = { finish() },
+                )
+            }
+        }
     }
 }
 

@@ -82,13 +82,18 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit) {
             }.getOrDefault("?")
         }
     }
-    // screensaver: lagen (uitleg, album-/persoonkeuze) en de toestand (opnieuw gelezen na elke wijziging)
-    var hulp by remember { mutableStateOf(false) }
+    // screensaver: pickers (album/person) and state (re-read on change and on resume)
     var albumKiezer by remember { mutableStateOf(false) }
     var persoonKiezer by remember { mutableStateOf(false) }
     var dreamRonde by remember { mutableIntStateOf(0) }
-    val dreamActief = remember(dreamRonde, hulp) { Screensaver.actief(ctx) }
-    val dreamMag = remember(dreamRonde, hulp) { Screensaver.magSchrijven(ctx) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    androidx.compose.runtime.DisposableEffect(lifecycle) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event -> if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) dreamRonde++ }
+        lifecycle.lifecycle.addObserver(observer)
+        onDispose { lifecycle.lifecycle.removeObserver(observer) }
+    }
+    val dreamActief = remember(dreamRonde) { Screensaver.actief(ctx) }
+    val dreamMag = remember(dreamRonde) { Screensaver.magSchrijven(ctx) }
     val lijst = androidx.compose.foundation.lazy.rememberLazyListState()
     val dreamRegel = remember { FocusRequester() }
     val eerste = remember { FocusRequester() }
@@ -147,11 +152,11 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit) {
             // met schrijfrecht: aan/uit zet het meteen; zonder: OK opent de uitleg (adb, systeeminstellingen)
             if (dreamMag) Keuzes(stringResource(R.string.screensaver), stringResource(if (dreamActief) R.string.dream_status_aan else R.string.dream_aan_uitleg), uitAan, if (dreamActief) 1 else 0, Modifier.focusRequester(dreamRegel)) {
                 Screensaver.zet(ctx, it == 1); dreamRonde++
-            } else Regel(stringResource(R.string.screensaver), stringResource(if (dreamActief) R.string.dream_status_aan else R.string.dream_status_uit_ok), Modifier.focusRequester(dreamRegel), onKlik = { hulp = true }) { focus ->
+            } else Regel(stringResource(R.string.screensaver), stringResource(if (dreamActief) R.string.dream_status_aan else R.string.dream_status_uit_ok), Modifier.focusRequester(dreamRegel), onKlik = { runCatching { ctx.startActivity(android.content.Intent(ctx, ScreensaverHulpActivity::class.java)) } }) { focus ->
                 Text(stringResource(if (dreamActief) R.string.aan else R.string.uit), style = MaterialTheme.typography.titleMedium, color = if (focus) Kleur.opPrimair else Kleur.tekst, modifier = Modifier.padding(end = 10.dp))
             }
         }
-        item { Actie(stringResource(R.string.dream_instellen), stringResource(R.string.dream_instellen_uitleg)) { hulp = true } }
+        item { Actie(stringResource(R.string.dream_instellen), stringResource(R.string.dream_instellen_uitleg)) { runCatching { ctx.startActivity(android.content.Intent(ctx, ScreensaverHulpActivity::class.java)) } } }
         item { Actie(stringResource(R.string.dream_voorbeeld), stringResource(R.string.dream_voorbeeld_uitleg)) { runCatching { ctx.startActivity(android.content.Intent(ctx, VoorbeeldActivity::class.java)) } } }
         item { Keuzes(stringResource(R.string.dream_bron), stringResource(R.string.dream_bron_uitleg), DreamBron.entries.map { stringResource(it.label) }, Instellingen.dreamBron.ordinal) { Instellingen.dreamBron = DreamBron.entries[it] } }
         val bron = Instellingen.dreamBron
@@ -256,7 +261,7 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit) {
                 mist.isEmpty() -> stringResource(R.string.rechten_ok)
                 else -> stringResource(R.string.rechten_mist_kort, mist.joinToString(", "))
             }
-            Actie(stringResource(R.string.rechten_titel), stand) { Rechten.open = true; scope.launch { Rechten.controleer() } }
+            Actie(stringResource(R.string.rechten_titel), stand) { scope.launch { Rechten.controleer() }; Rechten.show(ctx) }
         }
         item { Actie(stringResource(R.string.opnieuw_koppelen), stringResource(R.string.opnieuw_koppelen_uitleg)) { opnieuwKoppelen() } }
         item {
@@ -271,7 +276,6 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit) {
         if (alles) item { Info(stringResource(R.string.kaart), stringResource(R.string.kaart_bron, SAT_BRON)) }
         item { Text(stringResource(R.string.onofficieel_lang), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
     }
-    if (hulp) ScreensaverHulp { hulp = false; dreamRonde++ }
     if (albumKiezer) KiesLijst(stringResource(R.string.dream_albums), albumKeuzes(), Instellingen.dreamAlbum, sluit = { albumKiezer = false }, meer = true) { id, naam ->
         Instellingen.wisselDreamAlbum(id, naam)
     }

@@ -87,6 +87,16 @@
             android:permission="android.permission.DUMP"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
+        <activity
+            android:name=".RechtenActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
+        <activity
+            android:name=".ScreensaverHulpActivity"
+            android:exported="false"
+            android:screenOrientation="landscape"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
         <!-- Instellingen van de screensaver (settingsActivity in dream.xml): opent de app in Instellingen → Screensaver -->
         <activity-alias
             android:name=".ScreensaverInstellingen"

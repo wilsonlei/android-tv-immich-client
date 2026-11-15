@@ -6,9 +6,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
+import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -201,9 +204,17 @@ object ZelfAdb {
 }
 
 /** Instellingen → Screensaver → Instellen: toestand, knoppen en de stap-voor-stap-uitleg. Terug sluit. */
+class ScreensaverHulpActivity : ComponentActivity() {
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(Taal.wrap(base))
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { FotosThema { ScreensaverHulp { finish() } } }
+    }
+}
+
 @Composable
 fun ScreensaverHulp(sluit: () -> Unit) {
-    Lagen.Open()
     val ctx = LocalContext.current
     BackHandler { sluit() }
     var ronde by remember { mutableIntStateOf(0) }

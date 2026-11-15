@@ -172,7 +172,8 @@ fun MappenScherm(scherm: Scherm.Mappen, nav: Nav) {
             Melding(stringResource(R.string.mappen_geen_recht), stringResource(R.string.mappen_geen_recht_uitleg), Icons.Filled.Folder)
             // knop onder de melding (die staat gecentreerd)
             val fr = remember { FocusRequester() }
-            Knop(stringResource(R.string.rechten_titel), stringResource(R.string.rechten_bekijk), Modifier.align(Alignment.Center).offset(y = 140.dp).width(320.dp).focusRequester(fr)) { Rechten.open = true }
+            val ctx = androidx.compose.ui.platform.LocalContext.current
+            Knop(stringResource(R.string.rechten_titel), stringResource(R.string.rechten_bekijk), Modifier.align(Alignment.Center).offset(y = 140.dp).width(320.dp).focusRequester(fr)) { Rechten.show(ctx) }
             LaunchedEffect(Unit) { delay(50); runCatching { fr.requestFocus() } }
         }
         else Melding(stringResource(R.string.mappen_niet_geladen), f, Icons.Filled.Folder)
