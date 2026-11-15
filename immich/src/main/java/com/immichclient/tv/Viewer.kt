@@ -513,30 +513,7 @@ private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, alpha: () -
                 }
             }
 
-            val p = progress.value
-            val scaleVal = if (!isKenBurns) 1f else when (mode) {
-                0, 1 -> 1.05f + 0.12f * p     // Zoom In (1.05x -> 1.17x)
-                else -> 1.17f - 0.12f * p     // Zoom Out (1.17x -> 1.05x)
-            }
-            val panXVal = if (!isKenBurns) 0f else when (mode) {
-                0 -> -0.025f + 0.05f * p      // Pan Left to Right
-                1 -> 0.025f - 0.05f * p       // Pan Right to Left
-                2 -> -0.02f + 0.04f * p       // Pan Left to Right
-                else -> 0.02f - 0.04f * p      // Pan Right to Left
-            }
-            val panYVal = if (!isKenBurns) 0f else when (mode) {
-                0 -> -0.015f + 0.03f * p      // Pan Top to Bottom
-                1 -> 0.015f - 0.03f * p       // Pan Bottom to Top
-                2 -> 0.015f - 0.03f * p       // Pan Bottom to Top
-                else -> -0.015f + 0.03f * p   // Pan Top to Bottom
-            }
-
-            val mod = Modifier.fillMaxSize().graphicsLayer {
-                scaleX = scaleVal
-                scaleY = scaleVal
-                translationX = panXVal * size.width
-                translationY = panYVal * size.height
-            }
+            val mod = Modifier.fillMaxSize().kenBurnsLayer(isKenBurns, mode) { progress.value }
             if (!isKenBurns) AsyncImage(imageRequest(Immich.thumb(a.id)), null, mod, contentScale = scaleMode)
             AsyncImage(previewImage(a.id), null, mod, contentScale = scaleMode)
         }
