@@ -3,11 +3,11 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Screensaver van het systeem op deze app zetten (Settings.Secure.screensaver_components). Een gewone app krijgt
-         deze permissie niet vanzelf: eenmalig via adb `pm grant` (zie ScreensaverInstellen.kt); zonder blijft de app
-         gewoon werken en toont hij de uitleg. -->
+    <!-- Set the system screensaver to this app (Settings.Secure.screensaver_components). A regular app does not get
+         this permission automatically: grant once via adb `pm grant` (see ScreensaverSetup.kt); without it the app
+         still works and shows instructions. -->
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" tools:ignore="ProtectedPermissions" />
-    <!-- MapLibre kijkt of er netwerk is (ConnectivityReceiver) -->
+    <!-- MapLibre checks whether there is a network connection (ConnectivityReceiver) -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <uses-feature android:name="android.software.leanback" android:required="false" />
@@ -21,24 +21,24 @@
         android:theme="@style/Theme.Photos"
         android:usesCleartextTraffic="true">
 
-        <!-- De activity zelf staat niet in de launcher: dat doen de aliassen hieronder (naam + icoon + banner per
-             "uiterlijk", zie Instellingen.kt/Uiterlijk). Precies één alias staat aan; standaard "Photos". Labels en
-             banners zijn vertaald (values-xx, drawable-xx-nodpi) en volgen de systeemtaal van de launcher. -->
+        <!-- The activity itself is not in the launcher: the aliases below handle that (name + icon + banner per
+             "appearance", see Settings.kt/Appearance). Exactly one alias is enabled; default "Photos". Labels and
+             banners are translated (values-xx, drawable-xx-nodpi) and follow the launcher's system language. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
-        <activity-alias android:name=".Fotos" android:targetActivity=".MainActivity" android:exported="true" android:enabled="true"
-            android:label="@string/alias_fotos" android:icon="@mipmap/ic_launcher" android:banner="@mipmap/tv_banner">
+        <activity-alias android:name=".Photos" android:targetActivity=".MainActivity" android:exported="true" android:enabled="true"
+            android:label="@string/alias_photos" android:icon="@mipmap/ic_launcher" android:banner="@mipmap/tv_banner">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
-        <activity-alias android:name=".Fotoalbum" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
+        <activity-alias android:name=".PhotoAlbum" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
             android:label="@string/alias_album" android:icon="@mipmap/ic_album" android:banner="@drawable/banner_album">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -46,16 +46,16 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
-        <activity-alias android:name=".Herinneringen" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
-            android:label="@string/alias_herinneringen" android:icon="@mipmap/ic_herinneringen" android:banner="@drawable/banner_herinneringen">
+        <activity-alias android:name=".Memories" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
+            android:label="@string/alias_memories" android:icon="@mipmap/ic_herinneringen" android:banner="@drawable/banner_herinneringen">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity-alias>
-        <activity-alias android:name=".Familie" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
-            android:label="@string/alias_familie" android:icon="@mipmap/ic_familie" android:banner="@drawable/banner_familie">
+        <activity-alias android:name=".Family" android:targetActivity=".MainActivity" android:exported="true" android:enabled="false"
+            android:label="@string/alias_family" android:icon="@mipmap/ic_familie" android:banner="@drawable/banner_familie">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -63,15 +63,15 @@
             </intent-filter>
         </activity-alias>
 
-        <!-- Screensaver (DreamService, zie Dream.kt). Het label is wat de systeeminstellingen tonen waar een keuzelijst
-             bestaat; dream.xml koppelt het tandwieltje aan de instellingen van de app. -->
-        <!-- GEEN eigen proces (android:process): op Android 11 start het systeem android.service.dreams.DreamActivity in het
-             standaardproces van de app en cast het de binder van de service; in een ander proces crasht dat
-             (ClassCastException BinderProxy → DreamServiceWrapper) en blijft er een zwart scherm over (getest 21-10-2026). -->
+        <!-- Screensaver (DreamService, see Dream.kt). The label is what system settings show where a picker list
+             exists; dream.xml links the gear icon to the app's settings. -->
+        <!-- NO separate process (android:process): on Android 11 the system starts android.service.dreams.DreamActivity in
+             the app's default process and casts the service's binder; in another process that crashes
+             (ClassCastException BinderProxy -> DreamServiceWrapper) and leaves a black screen (tested 21-10-2026). -->
         <service
-            android:name=".FotoDream"
+            android:name=".PhotoDream"
             android:exported="true"
-            android:label="@string/dream_naam"
+            android:label="@string/dream_name"
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>
                 <action android:name="android.service.dreams.DreamService" />
@@ -79,35 +79,35 @@
             </intent-filter>
             <meta-data android:name="android.service.dream" android:resource="@xml/dream" />
         </service>
-        <!-- Voorbeeld van de screensaver (Instellingen → Screensaver → Voorbeeld). Exported met de DUMP-permissie: alleen de app
-             zelf en de shell (`am start -n com.immichclient.tv/.VoorbeeldActivity`, om te testen) kunnen hem starten. -->
+        <!-- Screensaver preview (Settings -> Screensaver -> Preview). Exported with DUMP permission: only the app
+             itself and the shell (`am start -n com.immichclient.tv/.PreviewActivity`, for testing) can start it. -->
         <activity
-            android:name=".VoorbeeldActivity"
+            android:name=".PreviewActivity"
             android:exported="true"
             android:permission="android.permission.DUMP"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
         <activity
-            android:name=".RechtenActivity"
+            android:name=".PermissionsActivity"
             android:exported="false"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
         <activity
-            android:name=".ScreensaverHulpActivity"
+            android:name=".ScreensaverHelpActivity"
             android:exported="false"
             android:screenOrientation="landscape"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout|uiMode" />
-        <!-- Instellingen van de screensaver (settingsActivity in dream.xml): opent de app in Instellingen → Screensaver -->
+        <!-- Screensaver settings (settingsActivity in dream.xml): opens the app in Settings -> Screensaver -->
         <activity-alias
-            android:name=".ScreensaverInstellingen"
+            android:name=".ScreensaverSettings"
             android:targetActivity=".MainActivity"
             android:exported="true"
-            android:label="@string/dream_naam" />
+            android:label="@string/dream_name" />
 
-        <!-- Sleutel + server zetten via adb zonder de app te openen (zie SleutelOntvanger). DUMP heeft alleen de shell/het
-             systeem, geen gewone app. -->
+        <!-- Set key + server via adb without opening the app (see KeyReceiver). Only shell/system has DUMP,
+             not regular apps. -->
         <receiver
-            android:name=".SleutelOntvanger"
+            android:name=".KeyReceiver"
             android:exported="true"
             android:permission="android.permission.DUMP">
             <intent-filter>

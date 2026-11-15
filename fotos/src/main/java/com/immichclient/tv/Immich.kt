@@ -24,72 +24,72 @@ import java.time.LocalDate
 import java.util.concurrent.TimeUnit
 
 /**
- * Immich (alleen lezen). Serveradres en API-sleutel staan in de prefs: gezet via het instelscherm (Koppel.kt, met de
- * telefoon) of via adb met `am broadcast -a com.immichclient.tv.SET_KEY --es sleutel … [--es server …]` (zie SleutelOntvanger).
- * Een eigen launcher kan een profiel meegeven (extra "kijker", bij het zetten én bij het starten van de app): dan geldt
- * per profiel een eigen account.
+ * Immich (read-only). Server address and API key are stored in prefs: set via the pairing screen (Pairing.kt, with
+ * the phone) or via adb with `am broadcast -a com.immichclient.tv.SET_KEY --es key ... [--es server ...]` (see KeyReceiver).
+ * A custom launcher can pass a profile (extra "viewer", both when setting and when launching the app): then each
+ * profile gets its own account.
  */
 object Immich {
     private const val PREFS = "immich"
 
-    @Volatile var sleutel = ""
+    @Volatile var key = ""
         private set
-    /** Basisadres zonder /api, bijv. http://192.168.1.10:2283 of https://photos.example.com */
+    /** Base address without /api, e.g. http://192.168.1.10:2283 or https://photos.example.com */
     @Volatile var server = ""
         private set
-    /** Profiel waarvan het account nu gebruikt wordt (null = het algemene account). */
-    @Volatile var kijker: String? = null
+    /** Profile whose account is currently active (null = the general account). */
+    @Volatile var viewer: String? = null
         private set
     val api get() = "$server/api"
-    /** Verandert bij koppelen/ontkoppelen zodat Compose het merkt (sleutel/server zelf zijn gewone velden). */
-    var stand by mutableIntStateOf(0)
+    /** Increments on pair/disconnect so Compose notices (key/server themselves are plain fields). */
+    var version by mutableIntStateOf(0)
         private set
 
     val http: OkHttpClient = OkHttpClient.Builder()
-        // de sleutel alleen naar de eigen server (niet naar bijv. tiles.immich.cloud)
+        // send the key only to our own server (not to e.g. tiles.immich.cloud)
         .addInterceptor { chain ->
             val req = chain.request()
-            chain.proceed(if (req.url.toString().startsWith(server)) req.newBuilder().header("x-api-key", sleutel).build() else req)
+            chain.proceed(if (req.url.toString().startsWith(server)) req.newBuilder().header("x-api-key", key).build() else req)
         }
         .dispatcher(Dispatcher().apply { maxRequests = 64; maxRequestsPerHost = 24 })
         .connectionPool(ConnectionPool(24, 5, TimeUnit.MINUTES))
         .connectTimeout(5, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS) // slim zoeken kan na een tijdje stilte even duren (ML-model laadt)
+        .readTimeout(60, TimeUnit.SECONDS) // smart search can take a bit after idle (ML model loads)
         .build()
 
-    /** Kies het account voor dit profiel (valt terug op het algemene account). */
-    fun kiesAccount(c: Context, kijker: String?) {
+    /** Select the account for this profile (falls back to the general account). */
+    fun selectAccount(c: Context, viewer: String?) {
         val p = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val k = kijker?.takeIf { it.isNotBlank() && p.contains("sleutel_$it") }
-        this.kijker = k
-        sleutel = p.getString(if (k != null) "sleutel_$k" else "sleutel", "") ?: ""
+        val k = viewer?.takeIf { it.isNotBlank() && p.contains("sleutel_$it") }
+        this.viewer = k
+        key = p.getString(if (k != null) "sleutel_$k" else "sleutel", "") ?: ""
         server = p.getString(if (k != null) "server_$k" else "server", "") ?: ""
-        ik = null
-        Instellingen.laad(c, k)
-        stand++
+        me = null
+        Settings.load(c, k)
+        version++
     }
 
-    fun zetSleutel(c: Context, nieuw: String, kijker: String?, serverAdres: String? = null) {
-        val na = if (kijker.isNullOrBlank()) "" else "_$kijker"
+    fun setKey(c: Context, next: String, viewer: String?, serverAddress: String? = null) {
+        val suffix = if (viewer.isNullOrBlank()) "" else "_$viewer"
         c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().apply {
-            putString("sleutel$na", nieuw.trim())
-            serverAdres?.let { putString("server$na", Koppel.normaliseer(it)) }
+            putString("sleutel$suffix", next.trim())
+            serverAddress?.let { putString("server$suffix", Pairing.normalize(it)) }
         }.apply()
     }
 
-    /** Sleutel (en adres) van dit account wissen; de sleutel zelf blijft in Immich staan tot je hem daar verwijdert. */
-    fun ontkoppel(c: Context, kijker: String?) {
-        val na = if (kijker.isNullOrBlank()) "" else "_$kijker"
-        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove("sleutel$na").remove("server$na").apply()
-        kiesAccount(c, kijker)
+    /** Clear key (and address) of this account; the key itself stays in Immich until deleted there. */
+    fun disconnect(c: Context, viewer: String?) {
+        val suffix = if (viewer.isNullOrBlank()) "" else "_$viewer"
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove("sleutel$suffix").remove("server$suffix").apply()
+        selectAccount(c, viewer)
     }
 
     fun thumb(id: String) = "$api/assets/$id/thumbnail?size=thumbnail"
     fun preview(id: String) = "$api/assets/$id/thumbnail?size=preview"
     fun video(id: String) = "$api/assets/$id/video/playback"
-    fun gezicht(id: String) = "$api/people/$id/thumbnail"
+    fun face(id: String) = "$api/people/$id/thumbnail"
 
-    private suspend fun haal(req: Request): String = withContext(Dispatchers.IO) {
+    private suspend fun fetch(req: Request): String = withContext(Dispatchers.IO) {
         http.newCall(req).execute().use { r ->
             val body = r.body?.string().orEmpty()
             if (!r.isSuccessful) throw IOException("Immich ${r.code}: ${req.url.encodedPath} ${body.take(200)}")
@@ -97,39 +97,39 @@ object Immich {
         }
     }
 
-    private suspend fun get(pad: String) = haal(Request.Builder().url(api + pad).build())
-    private suspend fun post(pad: String, json: JSONObject) =
-        haal(Request.Builder().url(api + pad).post(json.toString().toRequestBody("application/json".toMediaType())).build())
+    private suspend fun get(path: String) = fetch(Request.Builder().url(api + path).build())
+    private suspend fun post(path: String, json: JSONObject) =
+        fetch(Request.Builder().url(api + path).post(json.toString().toRequestBody("application/json".toMediaType())).build())
 
-    /** Ingelogde gebruiker (naam, e-mail) voor Instellingen en de begroeting; één keer opgehaald per account. */
-    var ik by mutableStateOf<Gebruiker?>(null)
+    /** Signed-in user (name, e-mail) for Settings and the greeting; fetched once per account. */
+    var me by mutableStateOf<User?>(null)
         private set
-    suspend fun laadIk(): Gebruiker? = ik ?: runCatching { JSONObject(get("/users/me")).let { Gebruiker(it.optString("name"), it.optString("email")) } }
-        .onFailure { Log.w("Fotos", "users/me", it) }.getOrNull()?.also { ik = it }
+    suspend fun loadMe(): User? = me ?: runCatching { JSONObject(get("/users/me")).let { User(it.optString("name"), it.optString("email")) } }
+        .onFailure { Log.w("Photos", "users/me", it) }.getOrNull()?.also { me = it }
 
-    /** Versie van de Immich-server ("3.3.3"), voor "Over". */
-    suspend fun serverVersie(): String? = runCatching {
+    /** Immich server version ("3.3.3"), for "About". */
+    suspend fun serverVersion(): String? = runCatching {
         JSONObject(get("/server/version")).let { "${it.optInt("major")}.${it.optInt("minor")}.${it.optInt("patch")}" }
     }.getOrNull()
 
-    // ---- Tijdlijn (ook voor albums, personen en favorieten: zelfde endpoint met een filter) ----
+    // ---- Timeline (also for albums, people, and favorites: same endpoint with a filter) ----
 
-    suspend fun maanden(filter: Filter, nieuwsteEerst: Boolean): List<Maand> {
-        val a = JSONArray(get("/timeline/buckets?" + filter.query(nieuwsteEerst)))
-        return List(a.length()) { i -> a.getJSONObject(i).let { Maand(it.getString("timeBucket"), it.getInt("count")) } }
+    suspend fun months(filter: Filter, newestFirst: Boolean): List<Month> {
+        val a = JSONArray(get("/timeline/buckets?" + filter.query(newestFirst)))
+        return List(a.length()) { i -> a.getJSONObject(i).let { Month(it.getString("timeBucket"), it.getInt("count")) } }
     }
 
-    suspend fun maand(filter: Filter, nieuwsteEerst: Boolean, maand: String): List<Asset> = withContext(Dispatchers.Default) {
-        val o = JSONObject(get("/timeline/bucket?" + filter.query(nieuwsteEerst) + "&withCoordinates=true&timeBucket=$maand"))
+    suspend fun month(filter: Filter, newestFirst: Boolean, month: String): List<Asset> = withContext(Dispatchers.Default) {
+        val o = JSONObject(get("/timeline/bucket?" + filter.query(newestFirst) + "&withCoordinates=true&timeBucket=$month"))
         val ids = o.getJSONArray("id")
         val ratio = o.optJSONArray("ratio")
         val isImage = o.getJSONArray("isImage")
         val hash = o.optJSONArray("thumbhash")
-        val datum = o.getJSONArray("fileCreatedAt")
+        val date = o.optJSONArray("fileCreatedAt")
         val offset = o.optJSONArray("localOffsetHours")
-        val duur = o.optJSONArray("duration")
-        val stad = o.optJSONArray("city")
-        val land = o.optJSONArray("country")
+        val duration = o.optJSONArray("duration")
+        val city = o.optJSONArray("city")
+        val country = o.optJSONArray("country")
         val fav = o.optJSONArray("isFavorite")
         val lat = o.optJSONArray("latitude")
         val lon = o.optJSONArray("longitude")
@@ -140,64 +140,64 @@ object Immich {
                 ratio = ratio?.optDouble(i, 1.0)?.toFloat()?.takeIf { it > 0 && !it.isNaN() } ?: 1f,
                 video = !isImage.getBoolean(i),
                 thumbhash = hash?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" },
-                datum = lokaleTijd(datum.getString(i), offset?.optDouble(i, 0.0) ?: 0.0),
-                duur = duur?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" },
-                stad = stad?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" },
-                land = land?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" }?.let(Landnaam::vertaal),
-                favoriet = fav?.optBoolean(i) ?: false,
+                date = localTime(date.getString(i), offset?.optDouble(i, 0.0) ?: 0.0),
+                duration = duration?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" },
+                city = city?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" },
+                country = country?.optString(i)?.takeIf { it.isNotEmpty() && it != "null" }?.let(CountryName::translate),
+                favorite = fav?.optBoolean(i) ?: false,
                 lat = coord(lat, i),
                 lon = coord(lon, i),
             )
         }
     }
 
-    // ---- Zoeken ----
+    // ---- Search ----
 
-    /** Slim zoeken (CLIP): "strand", "verjaardag met taart", "hond in de sneeuw". Volgorde = relevantie; taal = de app-taal. */
-    suspend fun zoekSlim(tekst: String, pagina: Int, alleenVideo: Boolean?): Pagina {
-        val body = JSONObject().put("query", tekst).put("language", Taal.code).put("size", 120).put("page", pagina)
-        if (alleenVideo != null) body.put("type", if (alleenVideo) "VIDEO" else "IMAGE")
-        return pagina(JSONObject(post("/search/smart", body)))
+    /** Smart search (CLIP): "beach", "birthday with cake", "dog in the snow". Order = relevance; language = app language. */
+    suspend fun searchSmart(text: String, page: Int, videoOnly: Boolean?): Page {
+        val body = JSONObject().put("query", text).put("language", Language.code).put("size", 120).put("page", page)
+        if (videoOnly != null) body.put("type", if (videoOnly) "VIDEO" else "IMAGE")
+        return page(JSONObject(post("/search/smart", body)))
     }
 
-    /** Het ML-model van Immich gaat na een paar minuten stilte uit het geheugen; dan duurt de eerste zoekopdracht ~9 s. */
-    suspend fun warmZoeken() {
-        runCatching { post("/search/smart", JSONObject().put("query", "photo").put("language", Taal.code).put("size", 1)) }
+    /** Immich's ML model unloads from memory after a few minutes of idle; the first search then takes ~9 s. */
+    suspend fun warmSearch() {
+        runCatching { post("/search/smart", JSONObject().put("query", "photo").put("language", Language.code).put("size", 1)) }
     }
 
-    suspend fun zoekPlaats(stad: String, pagina: Int): Pagina =
-        pagina(JSONObject(post("/search/metadata", JSONObject().put("city", stad).put("size", 250).put("page", pagina).put("order", "desc"))))
+    suspend fun searchPlace(city: String, page: Int): Page =
+        page(JSONObject(post("/search/metadata", JSONObject().put("city", city).put("size", 250).put("page", page).put("order", "desc"))))
 
     /**
-     * Bestandsnaam / omschrijving / OCR (tekst op de foto), eventueel alleen foto's of video's. Zonder tekst = alle
-     * foto's of video's van de tijdlijn, nieuwste eerst (zoals het type-filter in de web-app).
+     * Filename / description / OCR (text in photo), optionally photos or videos only. Without text = all
+     * photos or videos from the timeline, newest first (like the type filter in the web app).
      */
-    suspend fun zoekTekst(tekst: String?, veld: String, pagina: Int, alleenVideo: Boolean? = null): Pagina {
-        val body = JSONObject().put("size", 250).put("page", pagina).put("order", "desc")
-        if (tekst != null) body.put(veld, tekst) else body.put("visibility", "timeline")
-        if (alleenVideo != null) body.put("type", if (alleenVideo) "VIDEO" else "IMAGE")
-        return pagina(JSONObject(post("/search/metadata", body)))
+    suspend fun searchText(text: String?, field: String, page: Int, videoOnly: Boolean? = null): Page {
+        val body = JSONObject().put("size", 250).put("page", page).put("order", "desc")
+        if (text != null) body.put(field, text) else body.put("visibility", "timeline")
+        if (videoOnly != null) body.put("type", if (videoOnly) "VIDEO" else "IMAGE")
+        return page(JSONObject(post("/search/metadata", body)))
     }
 
-    private suspend fun pagina(o: JSONObject): Pagina = withContext(Dispatchers.Default) {
+    private suspend fun page(o: JSONObject): Page = withContext(Dispatchers.Default) {
         val a = o.getJSONObject("assets")
         val items = a.getJSONArray("items")
-        Pagina(List(items.length()) { asset(items.getJSONObject(it)) }, a.optString("nextPage").toIntOrNull())
+        Page(List(items.length()) { asset(items.getJSONObject(it)) }, a.optString("nextPage").toIntOrNull())
     }
 
-    suspend fun plaatsen(): List<Plaats> = withContext(Dispatchers.Default) {
+    suspend fun places(): List<Place> = withContext(Dispatchers.Default) {
         val a = JSONArray(get("/search/cities"))
         List(a.length()) { i ->
             val o = a.getJSONObject(i)
             val exif = o.optJSONObject("exifInfo")
-            Plaats(exif?.optString("city").orEmpty(), Landnaam.vertaal(exif?.optString("country").orEmpty()), o.getString("id"))
-        }.filter { it.stad.isNotBlank() }
+            Place(exif?.optString("city").orEmpty(), CountryName.translate(exif?.optString("country").orEmpty()), o.getString("id"))
+        }.filter { it.city.isNotBlank() }
     }
 
-    suspend fun personen(): List<Persoon> = withContext(Dispatchers.Default) {
+    suspend fun people(): List<Person> = withContext(Dispatchers.Default) {
         val a = JSONObject(get("/people?size=1000&withHidden=false")).getJSONArray("people")
-        List(a.length()) { i -> a.getJSONObject(i).let { Persoon(it.getString("id"), it.optString("name"), it.optBoolean("isFavorite")) } }
-            .filter { it.naam.isNotBlank() }
+        List(a.length()) { i -> a.getJSONObject(i).let { Person(it.getString("id"), it.optString("name"), it.optBoolean("isFavorite")) } }
+            .filter { it.name.isNotBlank() }
     }
 
     // ---- Albums ----
@@ -208,71 +208,71 @@ object Immich {
             val o = a.getJSONObject(i)
             Album(
                 id = o.getString("id"),
-                naam = o.optString("albumName"),
-                omslag = o.optString("albumThumbnailAssetId").takeIf { it.isNotEmpty() && it != "null" },
-                aantal = o.optInt("assetCount"),
-                van = o.optString("startDate").take(10).let { runCatching { LocalDate.parse(it) }.getOrNull() },
-                tot = o.optString("endDate").take(10).let { runCatching { LocalDate.parse(it) }.getOrNull() },
-                bijgewerkt = o.optString("lastModifiedAssetTimestamp").ifEmpty { o.optString("updatedAt") },
-                gedeeld = o.optBoolean("shared"),
-                oudsteEerst = o.optString("order") == "asc",
+                name = o.optString("albumName"),
+                cover = o.optString("albumThumbnailAssetId").takeIf { it.isNotEmpty() && it != "null" },
+                count = o.optInt("assetCount"),
+                from = o.optString("startDate").take(10).let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                to = o.optString("endDate").take(10).let { runCatching { LocalDate.parse(it) }.getOrNull() },
+                updatedAt = o.optString("lastModifiedAssetTimestamp").ifEmpty { o.optString("updatedAt") },
+                shared = o.optBoolean("shared"),
+                oldestFirst = o.optString("order") == "asc",
             )
         }
     }
 
-    // ---- Herinneringen ("vandaag X jaar geleden") ----
+    // ---- Memories ("on this day X years ago") ----
 
-    suspend fun herinneringen(dag: LocalDate): List<Herinnering> = withContext(Dispatchers.Default) {
-        val a = JSONArray(get("/memories?for=$dag"))
+    suspend fun memories(day: LocalDate): List<Memory> = withContext(Dispatchers.Default) {
+        val a = JSONArray(get("/memories?for=$day"))
         List(a.length()) { i ->
             val o = a.getJSONObject(i)
             val assets = o.getJSONArray("assets")
-            Herinnering(
+            Memory(
                 id = o.getString("id"),
-                jaar = o.optJSONObject("data")?.optInt("year") ?: 0,
-                dag = dag,
-                assets = List(assets.length()) { asset(assets.getJSONObject(it)) }.sortedBy { it.datum },
+                year = o.optJSONObject("data")?.optInt("year") ?: 0,
+                day = day,
+                assets = List(assets.length()) { asset(assets.getJSONObject(it)) }.sortedBy { it.date },
             )
-        }.filter { it.assets.isNotEmpty() }.sortedByDescending { it.jaar }
+        }.filter { it.assets.isNotEmpty() }.sortedByDescending { it.year }
     }
 
-    /** Willekeurige foto's (screensaver "alle foto's"): /search/random geeft [n] assets met exif in één call. */
-    suspend fun willekeurig(n: Int, vanafJaar: Int = 0): List<Asset> = withContext(Dispatchers.Default) {
+    /** Random photos (screensaver "all photos"): /search/random returns [n] assets with exif in one call. */
+    suspend fun random(n: Int, fromYear: Int = 0): List<Asset> = withContext(Dispatchers.Default) {
         val q = JSONObject().put("size", n).put("type", "IMAGE").put("visibility", "timeline").put("withExif", true)
-        if (vanafJaar > 0) q.put("takenAfter", "$vanafJaar-01-01T00:00:00.000Z")
+        if (fromYear > 0) q.put("takenAfter", "$fromYear-01-01T00:00:00.000Z")
         val a = JSONArray(post("/search/random", q))
         List(a.length()) { asset(a.getJSONObject(it)) }
     }
 
-    // ---- Albums van één foto (viewer: "uit album …") ----
+    // ---- Albums of a single photo (viewer: "in album ...") ----
 
-    private val albumsVan = object : LinkedHashMap<String, List<String>>(64, 0.75f, true) {
+    private val albumsOf = object : LinkedHashMap<String, List<String>>(64, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<String, List<String>>?) = size > 300
     }
 
-    /** Namen van de albums waar deze foto in zit (gecachet; fout of geen recht = lege lijst). */
-    suspend fun albumsVan(id: String): List<String> {
-        synchronized(albumsVan) { albumsVan[id] }?.let { return it }
-        val namen = runCatching {
+    /** Names of the albums this photo is in (cached; error or missing permission = empty list). */
+    suspend fun albumsOf(id: String): List<String> {
+        synchronized(albumsOf) { albumsOf[id] }?.let { return it }
+        val names = runCatching {
             val a = JSONArray(get("/albums?assetId=$id"))
             List(a.length()) { a.getJSONObject(it).optString("albumName") }.filter { it.isNotBlank() }.distinct()
-        }.onFailure { Log.w("Fotos", "albums van $id: ${it.message}") }.getOrNull() ?: return emptyList()
-        synchronized(albumsVan) { albumsVan[id] = namen }
-        return namen
+        }.onFailure { Log.w("Photos", "albums of $id: ${it.message}") }.getOrNull() ?: return emptyList()
+        synchronized(albumsOf) { albumsOf[id] = names }
+        return names
     }
 
-    // ---- Rechten van de sleutel (zie Rechten.kt) ----
+    // ---- Key permissions (see Permissions.kt) ----
 
-    /** Naam + rechten van de eigen sleutel; null als de server dat niet kent (dan [probeerRecht]). */
-    suspend fun sleutelRechten(): Pair<String, Set<String>>? = runCatching {
+    /** Name + permissions of our own key; null if the server doesn't support this (then [testPermission]). */
+    suspend fun keyPermissions(): Pair<String, Set<String>>? = runCatching {
         val o = JSONObject(get("/api-keys/me"))
         val p = o.getJSONArray("permissions")
         o.optString("name") to (0 until p.length()).map { p.getString(it) }.toSet()
-    }.onFailure { Log.w("Fotos", "api-keys/me: ${it.message}") }.getOrNull()
+    }.onFailure { Log.w("Photos", "api-keys/me: ${it.message}") }.getOrNull()
 
-    /** Recht testen via het bijbehorende endpoint: true = werkt, false = 403, null = niet te bepalen. */
-    suspend fun probeerRecht(recht: String): Boolean? {
-        val pad = when (recht) {
+    /** Test permission via its endpoint: true = works, false = 403, null = indeterminable. */
+    suspend fun testPermission(permission: String): Boolean? {
+        val path = when (permission) {
             "user.read" -> "/users/me"
             "asset.read" -> "/timeline/buckets?visibility=timeline&order=desc"
             "album.read" -> "/albums"
@@ -282,48 +282,48 @@ object Immich {
             "folder.read" -> "/view/folder/unique-paths"
             else -> return null
         }
-        return try { get(pad); true } catch (e: IOException) {
+        return try { get(path); true } catch (e: IOException) {
             if (e.message.orEmpty().startsWith("Immich 403")) false else null
         }
     }
 
-    // ---- Mappen (zoals de bestanden op de schijf of in een externe bibliotheek staan; recht folder.read) ----
+    // ---- Folders (as files are arranged on disk or in an external library; permission folder.read) ----
 
-    /** Alle mappen met foto's (volledige paden zoals Immich ze kent). */
-    suspend fun mappen(): List<String> = withContext(Dispatchers.Default) {
+    /** All folders with photos (full paths as Immich knows them). */
+    suspend fun folders(): List<String> = withContext(Dispatchers.Default) {
         val a = JSONArray(get("/view/folder/unique-paths"))
         List(a.length()) { a.getString(it) }
     }
 
-    /** Foto's en video's direct in deze map (niet in submappen), op datum. */
-    suspend fun mapInhoud(pad: String): List<Asset> = withContext(Dispatchers.Default) {
-        val url = ("$api/view/folder".toHttpUrlOrNull() ?: throw IOException("ongeldig serveradres"))
-            .newBuilder().addQueryParameter("path", pad).build()
-        val a = JSONArray(haal(Request.Builder().url(url).build()))
-        List(a.length()) { asset(a.getJSONObject(it)) }.sortedBy { it.datum }
+    /** Photos and videos directly in this folder (not in subfolders), by date. */
+    suspend fun folderContents(path: String): List<Asset> = withContext(Dispatchers.Default) {
+        val url = ("$api/view/folder".toHttpUrlOrNull() ?: throw IOException("invalid server address"))
+            .newBuilder().addQueryParameter("path", path).build()
+        val a = JSONArray(fetch(Request.Builder().url(url).build()))
+        List(a.length()) { asset(a.getJSONObject(it)) }.sortedBy { it.date }
     }
 
-    /** Eén asset (voor de viewer vanaf de kaart: daar zijn alleen id's bekend). */
+    /** Single asset (for the viewer from the map: only IDs are known there). */
     suspend fun asset(id: String): Asset = withContext(Dispatchers.Default) { asset(JSONObject(get("/assets/$id"))) }
 
-    // ---- Kaart ----
+    // ---- Map ----
 
     /**
-     * Alle foto's met GPS (id, plek, plaats): één call (kunnen tienduizenden zijn: 47k = 6,6 MB JSON), nieuwste eerst.
-     * Gestreamd gelezen (JsonReader) in plaats van als één JSONArray: dat kostte ~40 MB tijdelijke objecten op de
-     * Java-heap (47k JSONObjects met elk een eigen map), precies op het moment dat de kaart ook geheugen nodig heeft.
-     * Plaats- en landnamen worden gedeeld (dezelfde String voor dezelfde naam).
+     * All photos with GPS (id, coords, city): one call (can be tens of thousands: 47k = 6.6 MB JSON), newest first.
+     * Streamed with JsonReader instead of one JSONArray: that cost ~40 MB of temporary objects on the Java heap
+     * (47k JSONObjects each with its own map), right when the map also needs memory.
+     * City and country names are interned (same String instance for the same name).
      */
     suspend fun markers(): Markers = withContext(Dispatchers.IO) {
         val req = Request.Builder().url("$api/map/markers").build()
         val ids = ArrayList<String>(4096); var lat = DoubleArray(4096); var lon = DoubleArray(4096)
-        val stad = ArrayList<String?>(4096); val engels = ArrayList<String?>(4096)
+        val city = ArrayList<String?>(4096); val english = ArrayList<String?>(4096)
         val pool = HashMap<String, String>()
-        fun gedeeld(s: String?) = s?.takeIf { it.isNotEmpty() && it != "null" }?.let { pool.getOrPut(it) { it } }
+        fun interned(s: String?) = s?.takeIf { it.isNotEmpty() && it != "null" }?.let { pool.getOrPut(it) { it } }
         http.newCall(req).execute().use { r ->
             if (!r.isSuccessful) throw IOException("Immich ${r.code}: /api/map/markers ${r.body?.string().orEmpty().take(200)}")
             android.util.JsonReader(r.body!!.charStream()).use { j ->
-                fun tekst(): String? = if (j.peek() == android.util.JsonToken.NULL) { j.nextNull(); null } else j.nextString()
+                fun text(): String? = if (j.peek() == android.util.JsonToken.NULL) { j.nextNull(); null } else j.nextString()
                 j.beginArray()
                 while (j.hasNext()) {
                     var id = ""; var la = Double.NaN; var lo = Double.NaN; var st: String? = null; var la2: String? = null
@@ -332,55 +332,55 @@ object Immich {
                         "id" -> id = j.nextString()
                         "lat" -> la = if (j.peek() == android.util.JsonToken.NULL) { j.nextNull(); Double.NaN } else j.nextDouble()
                         "lon" -> lo = if (j.peek() == android.util.JsonToken.NULL) { j.nextNull(); Double.NaN } else j.nextDouble()
-                        "city" -> st = gedeeld(tekst())
-                        "country" -> la2 = gedeeld(tekst())
+                        "city" -> st = interned(text())
+                        "country" -> la2 = interned(text())
                         else -> j.skipValue()
                     }
                     j.endObject()
                     if (id.isEmpty() || la.isNaN() || lo.isNaN()) continue
                     val n = ids.size
                     if (n == lat.size) { lat = lat.copyOf(n * 2); lon = lon.copyOf(n * 2) }
-                    ids.add(id); lat[n] = la; lon[n] = lo; stad.add(st); engels.add(la2)
+                    ids.add(id); lat[n] = la; lon[n] = lo; city.add(st); english.add(la2)
                 }
                 j.endArray()
             }
         }
         val n = ids.size
-        // landnaam en ISO-code één keer per verschillend land
-        val naam = HashMap<String, String>(); val code = HashMap<String, String?>()
-        val land = arrayOfNulls<String>(n); val iso = arrayOfNulls<String>(n)
-        for (i in 0 until n) engels[i]?.let { e -> land[i] = naam.getOrPut(e) { Landnaam.vertaal(e) }; iso[i] = code.getOrPut(e) { Landnaam.iso(e) } }
-        Markers(ids.toTypedArray(), lat.copyOf(n), lon.copyOf(n), stad.toTypedArray(), land, iso)
+        // country name and ISO code once per distinct country
+        val nameMap = HashMap<String, String>(); val codeMap = HashMap<String, String?>()
+        val country = arrayOfNulls<String>(n); val iso = arrayOfNulls<String>(n)
+        for (i in 0 until n) english[i]?.let { e -> country[i] = nameMap.getOrPut(e) { CountryName.translate(e) }; iso[i] = codeMap.getOrPut(e) { CountryName.iso(e) } }
+        Markers(ids.toTypedArray(), lat.copyOf(n), lon.copyOf(n), city.toTypedArray(), country, iso)
     }
 
-    /** Kaartstijl van de Immich-server (licht of donker; satelliet = donkere stijl met Sentinel-2 eronder, zie Wereldkaart.kt). */
-    suspend fun kaartStijl(licht: Boolean): String {
-        val veld = if (licht) "mapLightStyleUrl" else "mapDarkStyleUrl"
-        return runCatching { JSONObject(get("/server/config")).optString(veld).takeIf { it.startsWith("http") } }.getOrNull()
-            ?: "https://tiles.immich.cloud/v1/style/${if (licht) "light" else "dark"}.json"
+    /** Map style from the Immich server (light or dark; satellite = dark style with Sentinel-2 underneath, see WorldMap.kt). */
+    suspend fun mapStyleUrl(light: Boolean): String {
+        val field = if (light) "mapLightStyleUrl" else "mapDarkStyleUrl"
+        return runCatching { JSONObject(get("/server/config")).optString(field).takeIf { it.startsWith("http") } }.getOrNull()
+            ?: "https://tiles.immich.cloud/v1/style/${if (light) "light" else "dark"}.json"
     }
 
-    /** Details voor het infopaneel in de viewer. */
+    /** Details for the info panel in the viewer. */
     suspend fun details(id: String): Details = withContext(Dispatchers.Default) {
         val o = JSONObject(get("/assets/$id"))
         val e = o.optJSONObject("exifInfo")
         fun s(k: String) = e?.optString(k)?.takeIf { it.isNotEmpty() && it != "null" }
-        val mensen = o.optJSONArray("people")
+        val people = o.optJSONArray("people")
         Details(
-            bestand = o.optString("originalFileName"),
+            filename = o.optString("originalFileName"),
             camera = listOfNotNull(s("make"), s("model")).joinToString(" ").ifEmpty { null },
             lens = s("lensModel"),
-            instellingen = listOfNotNull(
+            settings = listOfNotNull(
                 e?.optDouble("focalLength")?.takeIf { !it.isNaN() && it > 0 }?.let { "${it.toInt()} mm" },
                 e?.optDouble("fNumber")?.takeIf { !it.isNaN() && it > 0 }?.let { "ƒ/" + ("%.1f".format(it)).removeSuffix(",0").removeSuffix(".0") },
                 s("exposureTime")?.let { "$it s" },
                 e?.optInt("iso")?.takeIf { it > 0 }?.let { "ISO $it" },
             ).joinToString("  ·  ").ifEmpty { null },
-            plaats = listOfNotNull(s("city"), s("state"), s("country")?.let(Landnaam::vertaal)).distinct().joinToString(", ").ifEmpty { null },
-            mensen = if (mensen == null) emptyList() else
-                List(mensen.length()) { mensen.getJSONObject(it).optString("name") }.filter { it.isNotBlank() },
-            omschrijving = s("description"),
-            afmeting = listOfNotNull(o.optInt("width").takeIf { it > 0 }, o.optInt("height").takeIf { it > 0 })
+            place = listOfNotNull(s("city"), s("state"), s("country")?.let(CountryName::translate)).distinct().joinToString(", ").ifEmpty { null },
+            people = if (people == null) emptyList() else
+                List(people.length()) { people.getJSONObject(it).optString("name") }.filter { it.isNotBlank() },
+            description = s("description"),
+            dimensions = listOfNotNull(o.optInt("width").takeIf { it > 0 }, o.optInt("height").takeIf { it > 0 })
                 .takeIf { it.size == 2 }?.let { (w, h) -> "$w × $h" },
         )
     }
@@ -399,12 +399,12 @@ object Immich {
             ratio = if (w > 0 && h > 0) w.toFloat() / h else 1f,
             video = o.optString("type") == "VIDEO",
             thumbhash = o.optString("thumbhash").takeIf { it.isNotEmpty() && it != "null" },
-            // localDateTime is de lokale tijd, ook al staat er een Z achter
-            datum = lokaleTijd(o.optString("localDateTime").ifEmpty { o.optString("fileCreatedAt") }, 0.0),
-            duur = o.optString("duration").takeIf { it.isNotEmpty() && it != "null" },
-            stad = e?.optString("city")?.takeIf { it.isNotEmpty() && it != "null" },
-            land = e?.optString("country")?.takeIf { it.isNotEmpty() && it != "null" }?.let(Landnaam::vertaal),
-            favoriet = o.optBoolean("isFavorite"),
+            // localDateTime is local time, even when it has a trailing Z
+            date = localTime(o.optString("localDateTime").ifEmpty { o.optString("fileCreatedAt") }, 0.0),
+            duration = o.optString("duration").takeIf { it.isNotEmpty() && it != "null" },
+            city = e?.optString("city")?.takeIf { it.isNotEmpty() && it != "null" },
+            country = e?.optString("country")?.takeIf { it.isNotEmpty() && it != "null" }?.let(CountryName::translate),
+            favorite = o.optBoolean("isFavorite"),
             lat = e?.optDouble("latitude")?.takeIf { !it.isNaN() },
             lon = e?.optDouble("longitude")?.takeIf { !it.isNaN() },
         )
@@ -412,16 +412,17 @@ object Immich {
 }
 
 /**
- * Zet de sleutel via adb (alleen de shell mag dit, zie de DUMP-permissie in het manifest):
- * `am broadcast -a com.immichclient.tv.SET_KEY -n com.immichclient.tv/.SleutelOntvanger --es sleutel … --es server http://…:2283 [--es taal nl]`.
- * Zonder `server` blijft het opgeslagen adres staan; `taal` (en/nl/de/fr/es) slaat het taalkeuzescherm van de eerste start over.
+ * Set the key via adb (only the shell is allowed, see DUMP permission in the manifest):
+ * `am broadcast -a com.immichclient.tv.SET_KEY -n com.immichclient.tv/.KeyReceiver --es key ... --es server http://...:2283 [--es language nl]`.
+ * Without `server`, the saved address stays intact; `language` (en/nl/de/fr/es) skips the first-start language picker.
  */
-class SleutelOntvanger : BroadcastReceiver() {
+class KeyReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
-        val s = i.getStringExtra("sleutel") ?: return
-        i.getStringExtra("taal")?.let { Taal.kies(c, it) }
-        Immich.zetSleutel(c, s, i.getStringExtra("kijker"), i.getStringExtra("server"))
-        Immich.kiesAccount(c, null)
-        Log.i("Fotos", "sleutel gezet" + (i.getStringExtra("kijker")?.let { " voor $it" } ?: "") + " voor ${Immich.server}")
+        val s = i.getStringExtra("key") ?: i.getStringExtra("sleutel") ?: return
+        (i.getStringExtra("language") ?: i.getStringExtra("taal"))?.let { Language.choose(c, it) }
+        val viewer = i.getStringExtra("viewer") ?: i.getStringExtra("kijker")
+        Immich.setKey(c, s, viewer, i.getStringExtra("server"))
+        Immich.selectAccount(c, null)
+        Log.i("Photos", "key set" + (viewer?.let { " for $it" } ?: "") + " for ${Immich.server}")
     }
 }

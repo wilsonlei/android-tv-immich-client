@@ -92,401 +92,401 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /*
- * Screensaver (DreamService) met dezelfde sfeer als de viewer: grote foto (crossfade, Ken Burns), klok + datum
- * linksboven, de landkaart met stip rechtsonder (Kaart.kt), een timer-ringetje en datum/plaats linksonder.
- * Bron, interval en de onderdelen zijn instelbaar (Instellingen → Screensaver). ◀ ▶ = vorige/volgende foto, elke
- * andere toets (behalve volume) sluit de screensaver, zoals een gewone screensaver.
+ * Screensaver (DreamService) with the same atmosphere as the viewer: large photo (crossfade, Ken Burns),
+ * clock + date top-left, country outline map with dot bottom-right (CountryMap.kt), a timer ring and
+ * date/location bottom-left. Source, interval, and components are configurable (Settings -> Screensaver).
+ * Left / Right = previous/next photo; any other key (except volume) closes the screensaver, like a normal screensaver.
  *
- * Zuinig met geheugen (de screensaver draait naast andere apps): previews op schermmaat via dezelfde Coil-cache als de
- * app, en nooit meer dan drie beelden tegelijk (de huidige, de vorige die uitvloeit, de volgende vooraf geladen).
+ * Memory-frugal (the screensaver runs alongside other apps): screen-sized previews via the same Coil cache as the
+ * app, and never more than three images at once (current, previous fading out, next preloaded).
  */
 
-/** Wat de screensaver toont; één per keer dat hij start. */
-class DreamStaat {
-    var huidig by mutableStateOf<Asset?>(null)
-    /** telt bij elke nieuwe foto op (het ringetje begint dan opnieuw) */
-    var ronde by mutableIntStateOf(0)
-    /** melding in het midden; alleen zolang er nog geen foto staat */
-    var melding by mutableStateOf<Int?>(null)
-    /** ophalen mislukt terwijl er al een foto staat: die blijft staan, met een klein wolkje bij het ringetje */
-    var storing by mutableStateOf(false)
-    /** wens van de afstandsbediening: -1 vorige, +1 volgende (alleen de laatste telt) */
-    val wens = Channel<Int>(Channel.CONFLATED)
-    val geschiedenis = ArrayList<Asset>()
-    var plek = -1
-    /** alleen om te testen (VoorbeeldActivity, `--es test_fout koppeling|sleutel|net|leeg`): bootst die fout na */
-    var testFout: String? = null
-    private var laatsteToets = 0L
+/** What the screensaver shows; one instance per start. */
+class DreamState {
+    var current by mutableStateOf<Asset?>(null)
+    /** Increments on each new photo (restarts the timer ring). */
+    var round by mutableIntStateOf(0)
+    /** Centered message; only shown while there is no photo yet. */
+    var message by mutableStateOf<Int?>(null)
+    /** Fetch failed while a photo is already shown: photo stays, with a small cloud icon next to the ring. */
+    var errorIcon by mutableStateOf(false)
+    /** Remote request: -1 previous, +1 next (only the latest counts). */
+    val request = Channel<Int>(Channel.CONFLATED)
+    val history = ArrayList<Asset>()
+    var pos = -1
+    /** For testing only (PreviewActivity, `--es test_fout koppeling|sleutel|net|leeg`): simulates that error. */
+    var testError: String? = null
+    private var lastKeyAt = 0L
 
-    /** Toets ◀/▶: max. 1× per 600 ms, anders stapelen grote previews zich op. */
-    fun stuur(richting: Int) {
-        val nu = SystemClock.elapsedRealtime()
-        if (nu - laatsteToets < 600) return
-        laatsteToets = nu
-        wens.trySend(richting)
+    /** Left/Right key: max 1x per 600 ms, otherwise large previews pile up. */
+    fun send(direction: Int) {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastKeyAt < 600) return
+        lastKeyAt = now
+        request.trySend(direction)
     }
 }
 
 /**
- * Levert foto's volgens de instelling: alles (willekeurig, via /search/random in porties), een album / favorieten /
- * een persoon (maandlijst, gewogen willekeurige maand, dan een willekeurige foto; hooguit 3 maanden in het geheugen) of
- * de herinneringen van vandaag. Video's worden overgeslagen; onlangs getoonde foto's komen niet meteen terug. Is de
- * gekozen bron leeg (geen album gekozen, geen favorieten, geen herinneringen vandaag), dan komen er willekeurige foto's.
+ * Provides photos according to settings: all (random, via /search/random in batches), an album / favorites /
+ * a person (month list, weighted random month, then a random photo; at most 3 months in memory), or today's
+ * memories. Videos are skipped; recently shown photos don't repeat immediately. If the chosen source is empty
+ * (no album selected, no favorites, no memories today), falls back to random photos.
  */
-class DreamVoorraad {
-    private val wachtrij = ArrayDeque<Asset>()
+class DreamQueue {
+    private val queue = ArrayDeque<Asset>()
     private val recent = ArrayDeque<String>()
-    /** maandlijsten per bron-filter (meerdere albums = meerdere filters) */
-    private var maanden: Map<Filter, List<Maand>>? = null
-    private var maandenSig: String? = null
-    /** foto-id → naam van het gekozen album/de persoon waar hij uit kwam (voor het bronlabel) */
-    private val uitNaam = HashMap<String, String>()
-    // vaste volgorde: maandsleutels in volgorde, waar we zijn, en de foto's van de huidige maand
-    private var reeks: List<String>? = null
-    private var reeksPer: Map<Filter, Set<String>> = emptyMap()
-    private var reeksSig: String? = null
-    private var reeksIdx = 0
-    private var hervatNa: java.time.LocalDateTime? = null
-    private val reeksBuf = ArrayDeque<Asset>()
-    private val maandCache = object : LinkedHashMap<String, List<Asset>>(4, 0.75f, true) {
+    /** Month lists per source filter (multiple albums = multiple filters). */
+    private var months: Map<Filter, List<Month>>? = null
+    private var monthsSig: String? = null
+    /** Photo ID -> name of the chosen album/person it came from (for the source label). */
+    private val fromName = HashMap<String, String>()
+    // Fixed order: month keys in order, current position, and photos of the current month
+    private var sequence: List<String>? = null
+    private var seqByFilter: Map<Filter, Set<String>> = emptyMap()
+    private var seqSig: String? = null
+    private var seqIdx = 0
+    private var resumeAfter: LocalDateTime? = null
+    private val seqBuf = ArrayDeque<Asset>()
+    private val monthCache = object : LinkedHashMap<String, List<Asset>>(4, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Asset>>?) = size > 3
     }
-    private var herinneringen: List<Asset>? = null
-    private var herinneringDag: LocalDate? = null
-    private var herinneringIndex = 0
-    /** foto's die echt uit de gekozen bron kwamen (niet uit de terugval): alleen die krijgen het bronlabel */
-    private val bronIds = LinkedHashSet<String>()
-    /** alvast opgehaalde volgende (en vooraf geladen), zie [kijkVooruit] */
-    private var vooruit: Asset? = null
-    /** volgende() en kijkVooruit() nooit tegelijk (beide halen anders dezelfde portie op) */
-    private val slot = kotlinx.coroutines.sync.Mutex()
+    private var memories: List<Asset>? = null
+    private var memoryDay: LocalDate? = null
+    private var memoryIndex = 0
+    /** Photos that truly came from the chosen source (not the fallback): only those get the source label. */
+    private val sourceIds = LinkedHashSet<String>()
+    /** Prefetched (and preloaded) next photo, see [lookAhead]. */
+    private var ahead: Asset? = null
+    /** Never run next() and lookAhead() concurrently (otherwise both fetch the same batch). */
+    private val lock = kotlinx.coroutines.sync.Mutex()
 
-    fun uitBron(id: String) = id in bronIds
-    fun naamVan(id: String): String? = uitNaam[id]
+    fun isFromSource(id: String) = id in sourceIds
+    fun nameOf(id: String): String? = fromName[id]
 
-    suspend fun volgende(): Asset? = slot.withLock {
-        vooruit?.let { vooruit = null; return@withLock it }
-        haal()
+    suspend fun next(): Asset? = lock.withLock {
+        ahead?.let { ahead = null; return@withLock it }
+        fetch()
     }
 
-    /** De volgende alvast bepalen en zijn preview laden, terwijl de huidige te zien is. */
-    suspend fun kijkVooruit(ctx: Context) = slot.withLock {
-        if (vooruit != null) return@withLock
-        val a = runCatching { haal() }.onFailure { Log.w("Fotos", "screensaver vooruit", it) }.getOrNull() ?: return@withLock
-        vooruit = a
-        SingletonImageLoader.get(ctx).enqueue(previewVerzoek(ctx, a.id))
+    /** Pick and preload the next photo in advance while the current one is visible. */
+    suspend fun lookAhead(ctx: Context) = lock.withLock {
+        if (ahead != null) return@withLock
+        val a = runCatching { fetch() }.onFailure { Log.w("Fotos", "screensaver lookAhead", it) }.getOrNull() ?: return@withLock
+        ahead = a
+        SingletonImageLoader.get(ctx).enqueue(previewRequest(ctx, a.id))
     }
 
-    /** De bron als filters (tijdlijn-endpoint), elk met de naam voor het label; leeg = niets gekozen. */
-    private fun bronFilters(): List<Pair<Filter, String?>> {
-        val i = Instellingen
-        val albums = i.paren(i.dreamAlbums, i.dreamAlbumNamen).map { (id, n) -> Filter(albumId = id) to n.ifBlank { null } }
-        val personen = i.paren(i.dreamPersonen, i.dreamPersoonNamen).map { (id, n) -> Filter(persoonId = id) to n.ifBlank { null } }
-        return when (i.dreamBron) {
-            DreamBron.ALLES -> listOf(Filter() to null)
-            DreamBron.HERINNERINGEN -> emptyList()
-            DreamBron.ALBUM -> albums
-            DreamBron.FAVORIETEN -> listOf(Filter(favorieten = true) to null)
-            DreamBron.PERSOON -> personen
-            DreamBron.COMBI -> albums + personen
+    /** Source as filters (timeline endpoint), each with its label name; empty = nothing selected. */
+    private fun sourceFilters(): List<Pair<Filter, String?>> {
+        val s = Settings
+        val albums = s.pairs(s.dreamAlbums, s.dreamAlbumNames).map { (id, n) -> Filter(albumId = id) to n.ifBlank { null } }
+        val people = s.pairs(s.dreamPeople, s.dreamPersonNames).map { (id, n) -> Filter(personId = id) to n.ifBlank { null } }
+        return when (s.dreamSource) {
+            DreamSource.ALL -> listOf(Filter() to null)
+            DreamSource.MEMORIES -> emptyList()
+            DreamSource.ALBUM -> albums
+            DreamSource.FAVORITES -> listOf(Filter(favorites = true) to null)
+            DreamSource.PERSON -> people
+            DreamSource.COMBO -> albums + people
         }
     }
 
-    private suspend fun haal(): Asset? {
-        if (Instellingen.dreamBron == DreamBron.HERINNERINGEN) return markeer(uitHerinneringen()) ?: uitPortie()
-        val fs = bronFilters()
-        if (fs.isEmpty()) return uitPortie() // nog niets gekozen: willekeurige foto's
-        if (Instellingen.dreamVolgorde != DreamVolgorde.WILLEKEURIG) return markeer(uitReeks(fs)) ?: uitPortie()
-        if (Instellingen.dreamBron == DreamBron.ALLES) return uitPortie()
-        return markeer(uitMaanden(fs)) ?: uitPortie()
+    private suspend fun fetch(): Asset? {
+        if (Settings.dreamSource == DreamSource.MEMORIES) return mark(fromMemories()) ?: fromBatch()
+        val fs = sourceFilters()
+        if (fs.isEmpty()) return fromBatch() // nothing chosen yet: random photos
+        if (Settings.dreamOrder != DreamOrder.RANDOM) return mark(fromSequence(fs)) ?: fromBatch()
+        if (Settings.dreamSource == DreamSource.ALL) return fromBatch()
+        return mark(fromMonths(fs)) ?: fromBatch()
     }
 
-    private fun jaarVan(m: Maand) = m.sleutel.take(4).toIntOrNull() ?: 0
+    private fun yearOf(m: Month) = m.key.take(4).toIntOrNull() ?: 0
 
-    /** Maandlijsten van alle filters (vanaf het gekozen jaar); een filter dat faalt (album weg) overslaan zolang er een ander is. */
-    private suspend fun maandenVan(fs: List<Filter>): Map<Filter, List<Maand>> {
-        val vanaf = Instellingen.dreamVanaf
-        val per = LinkedHashMap<Filter, List<Maand>>()
-        var fout: Throwable? = null
-        for (f in fs) runCatching { per[f] = Immich.maanden(f, true).filter { it.aantal > 0 && jaarVan(it) >= vanaf } }.onFailure { fout = it }
-        if (per.isEmpty()) fout?.let { throw it }
+    /** Month lists of all filters (from the chosen year); skip a failing filter (deleted album) while another works. */
+    private suspend fun monthsOf(fs: List<Filter>): Map<Filter, List<Month>> {
+        val from = Settings.dreamFrom
+        val per = LinkedHashMap<Filter, List<Month>>()
+        var error: Throwable? = null
+        for (f in fs) runCatching { per[f] = Immich.months(f, true).filter { it.count > 0 && yearOf(it) >= from } }.onFailure { error = it }
+        if (per.isEmpty()) error?.let { throw it }
         return per
     }
 
     /**
-     * Vaste volgorde (oudste/nieuwste eerst) over alle filters samen: maand voor maand, foto's samengevoegd en op datum.
-     * Na de laatste begint hij opnieuw. De plek wordt bewaard, zodat de volgende keer de screensaver daar verdergaat.
+     * Fixed order (oldest/newest first) across all filters combined: month by month, photos merged and sorted by date.
+     * Starts over after the last one. Position is saved so the screensaver resumes there next time.
      */
-    private suspend fun uitReeks(fs: List<Pair<Filter, String?>>): Asset? {
-        val oud = Instellingen.dreamVolgorde == DreamVolgorde.OUDSTE
-        val sig = "${Instellingen.dreamBron}|${fs.map { it.first }}|${Instellingen.dreamVanaf}|$oud".hashCode().toString()
-        if (reeksSig != sig || reeks == null) {
-            val per = maandenVan(fs.map { it.first })
-            reeksPer = per.mapValues { (_, ms) -> ms.map { it.sleutel }.toSet() }
-            val sleutels = per.values.flatten().map { it.sleutel }.distinct().sorted().let { if (oud) it else it.reversed() }
-            reeks = sleutels; reeksSig = sig; reeksBuf.clear(); reeksIdx = 0; hervatNa = null
-            val stand = Instellingen.dreamStand.split('\t')
-            if (stand.getOrNull(0) == sig) stand.getOrNull(1)?.let { d ->
-                runCatching { java.time.LocalDateTime.parse(d) }.getOrNull()?.let { h ->
-                    hervatNa = h
+    private suspend fun fromSequence(fs: List<Pair<Filter, String?>>): Asset? {
+        val oldest = Settings.dreamOrder == DreamOrder.OLDEST
+        val sig = "${Settings.dreamSource}|${fs.map { it.first }}|${Settings.dreamFrom}|$oldest".hashCode().toString()
+        if (seqSig != sig || sequence == null) {
+            val per = monthsOf(fs.map { it.first })
+            seqByFilter = per.mapValues { (_, ms) -> ms.map { it.key }.toSet() }
+            val keys = per.values.flatten().map { it.key }.distinct().sorted().let { if (oldest) it else it.reversed() }
+            sequence = keys; seqSig = sig; seqBuf.clear(); seqIdx = 0; resumeAfter = null
+            val pos = Settings.dreamPosition.split('\t')
+            if (pos.getOrNull(0) == sig) pos.getOrNull(1)?.let { d ->
+                runCatching { LocalDateTime.parse(d) }.getOrNull()?.let { r ->
+                    resumeAfter = r
                     val ym = d.take(7)
-                    reeksIdx = sleutels.indexOfFirst { if (oud) it.take(7) >= ym else it.take(7) <= ym }.coerceAtLeast(0)
+                    seqIdx = keys.indexOfFirst { if (oldest) it.take(7) >= ym else it.take(7) <= ym }.coerceAtLeast(0)
                 }
             }
-            Log.i("Fotos", "screensaver: vaste volgorde, ${sleutels.size} maanden, start bij ${sleutels.getOrNull(reeksIdx)} (na $hervatNa)")
+            Log.i("Fotos", "screensaver: fixed order, ${keys.size} months, starting at ${keys.getOrNull(seqIdx)} (after $resumeAfter)")
         }
-        val ms = reeks.orEmpty()
+        val ms = sequence.orEmpty()
         if (ms.isEmpty()) return null
-        var omloop = 0
-        while (reeksBuf.isEmpty()) {
-            if (reeksIdx >= ms.size) { reeksIdx = 0; hervatNa = null; if (++omloop > 1) return null }
-            val sleutel = ms[reeksIdx++]
-            val samen = LinkedHashMap<String, Pair<Asset, String?>>()
-            for ((f, naam) in fs) if (sleutel in reeksPer[f].orEmpty())
-                Immich.maand(f, true, sleutel).filter { !it.video }.forEach { samen.putIfAbsent(it.id, it to naam) }
-            var foto = samen.values.sortedBy { it.first.datum }.let { if (oud) it else it.reversed() }
-            hervatNa?.let { h -> foto = foto.filter { if (oud) it.first.datum > h else it.first.datum < h } }
-            hervatNa = null
-            for ((a, naam) in foto) { naam?.let { uitNaam[a.id] = it }; reeksBuf.addLast(a) }
+        var wraps = 0
+        while (seqBuf.isEmpty()) {
+            if (seqIdx >= ms.size) { seqIdx = 0; resumeAfter = null; if (++wraps > 1) return null }
+            val key = ms[seqIdx++]
+            val merged = LinkedHashMap<String, Pair<Asset, String?>>()
+            for ((f, name) in fs) if (key in seqByFilter[f].orEmpty())
+                Immich.month(f, true, key).filter { !it.video }.forEach { merged.putIfAbsent(it.id, it to name) }
+            var photos = merged.values.sortedBy { it.first.date }.let { if (oldest) it else it.reversed() }
+            resumeAfter?.let { r -> photos = photos.filter { if (oldest) it.first.date > r else it.first.date < r } }
+            resumeAfter = null
+            for ((a, name) in photos) { name?.let { fromName[a.id] = it }; seqBuf.addLast(a) }
         }
-        val a = reeksBuf.removeFirst()
-        Instellingen.dreamStand = "$sig\t${a.datum}"
+        val a = seqBuf.removeFirst()
+        Settings.dreamPosition = "$sig\t${a.date}"
         return a
     }
 
-    private fun markeer(a: Asset?): Asset? {
-        if (a != null) { bronIds.add(a.id); if (bronIds.size > 120) bronIds.remove(bronIds.first()).also { if (uitNaam.size > 400) uitNaam.clear() } }
+    private fun mark(a: Asset?): Asset? {
+        if (a != null) { sourceIds.add(a.id); if (sourceIds.size > 120) sourceIds.remove(sourceIds.first()).also { if (fromName.size > 400) fromName.clear() } }
         return a
     }
 
-    private suspend fun uitPortie(): Asset? {
-        if (wachtrij.size < 3) wachtrij.addAll(Immich.willekeurig(40, Instellingen.dreamVanaf).filter { !it.video && it.id !in recent && wachtrij.none { w -> w.id == it.id } })
-        return wachtrij.removeFirstOrNull()?.let { onthoud(it) }
+    private suspend fun fromBatch(): Asset? {
+        if (queue.size < 3) queue.addAll(Immich.random(40, Settings.dreamFrom).filter { !it.video && it.id !in recent && queue.none { q -> q.id == it.id } })
+        return queue.removeFirstOrNull()?.let { rememberRecent(it) }
     }
 
-    /** Willekeurige foto uit een of meer bronnen, gewogen naar het aantal foto's (een groot album komt vaker aan de beurt). */
-    private suspend fun uitMaanden(bron: List<Pair<Filter, String?>>): Asset? {
-        val fs = bron.map { it.first }
-        val sig = "$fs|${Instellingen.dreamVanaf}"
-        if (maandenSig != sig || maanden == null) {
-            maanden = maandenVan(fs); maandenSig = sig; maandCache.clear(); recent.clear()
+    /** Random photo from one or more sources, weighted by photo count (a large album appears more often). */
+    private suspend fun fromMonths(sources: List<Pair<Filter, String?>>): Asset? {
+        val fs = sources.map { it.first }
+        val sig = "$fs|${Settings.dreamFrom}"
+        if (monthsSig != sig || months == null) {
+            months = monthsOf(fs); monthsSig = sig; monthCache.clear(); recent.clear()
         }
-        val alle = maanden.orEmpty().flatMap { (f, ms) -> ms.map { f to it } }
-        val totaal = alle.sumOf { it.second.aantal }
-        if (totaal == 0) return null
-        var laatste: Asset? = null
+        val all = months.orEmpty().flatMap { (f, ms) -> ms.map { f to it } }
+        val total = all.sumOf { it.second.count }
+        if (total == 0) return null
+        var last: Asset? = null
         repeat(10) {
-            var r = Random.nextInt(totaal)
-            val (f, m) = alle.first { r -= it.second.aantal; r < 0 }
-            val lijst = maandCache.getOrPut("$f|${m.sleutel}") { Immich.maand(f, true, m.sleutel) }
-            val a = lijst.filter { !it.video }.randomOrNull() ?: return@repeat
-            laatste = a
-            bron.firstOrNull { it.first == f }?.second?.let { uitNaam[a.id] = it }
-            if (a.id !in recent) return onthoud(a, totaal)
+            var r = Random.nextInt(total)
+            val (f, m) = all.first { r -= it.second.count; r < 0 }
+            val list = monthCache.getOrPut("$f|${m.key}") { Immich.month(f, true, m.key) }
+            val a = list.filter { !it.video }.randomOrNull() ?: return@repeat
+            last = a
+            sources.firstOrNull { it.first == f }?.second?.let { fromName[a.id] = it }
+            if (a.id !in recent) return rememberRecent(a, total)
         }
-        return laatste?.let { onthoud(it, totaal) }
+        return last?.let { rememberRecent(it, total) }
     }
 
-    private suspend fun uitHerinneringen(): Asset? {
-        val vandaag = LocalDate.now()
-        if (herinneringen == null || herinneringDag != vandaag) {
-            herinneringen = Immich.herinneringen(vandaag).flatMap { it.assets }.filter { !it.video }.shuffled()
-            herinneringDag = vandaag; herinneringIndex = 0
+    private suspend fun fromMemories(): Asset? {
+        val today = LocalDate.now()
+        if (memories == null || memoryDay != today) {
+            memories = Immich.memories(today).flatMap { it.assets }.filter { !it.video }.shuffled()
+            memoryDay = today; memoryIndex = 0
         }
-        val l = herinneringen ?: return null
+        val l = memories ?: return null
         if (l.isEmpty()) return null
-        // "vanaf": herinneringen van vóór dat jaar overslaan
-        val vanaf = Instellingen.dreamVanaf
-        repeat(l.size) { val a = l[herinneringIndex++ % l.size]; if (a.datum.year >= vanaf) return a }
+        // "from": skip memories before that year
+        val from = Settings.dreamFrom
+        repeat(l.size) { val a = l[memoryIndex++ % l.size]; if (a.date.year >= from) return a }
         return null
     }
 
-    private fun onthoud(a: Asset, totaal: Int = Int.MAX_VALUE): Asset {
+    private fun rememberRecent(a: Asset, total: Int = Int.MAX_VALUE): Asset {
         recent.addLast(a.id)
-        val max = (totaal / 2).coerceIn(2, 80)
+        val max = (total / 2).coerceIn(2, 80)
         while (recent.size > max) recent.removeFirst()
         return a
     }
 }
 
-/** Fout bij het ophalen → melding: sleutel geweigerd, bron bestaat niet meer (album weg) of geen verbinding. */
-private fun meldingVoor(e: Throwable): Int {
+/** Fetch error -> message: key rejected, source no longer exists (album deleted), or no connection. */
+private fun messageFor(e: Throwable): Int {
     val m = e.message.orEmpty()
     return when {
-        m.startsWith("Immich 401") || m.startsWith("Immich 403") -> R.string.dream_sleutel_fout
-        m.startsWith("Immich 4") -> R.string.dream_geen_fotos
-        else -> R.string.dream_geen_verbinding
+        m.startsWith("Immich 401") || m.startsWith("Immich 403") -> R.string.dream_key_error
+        m.startsWith("Immich 4") -> R.string.dream_no_photos
+        else -> R.string.dream_no_connection
     }
 }
 
-/** Label van de bron voor de regel linksonder (albumnaam, "3 jaar geleden", …); null bij "alle foto's" of de terugval. */
+/** Source label for the bottom-left line (album name, "3 years ago", ...); null for "all photos" or fallback. */
 @Composable
-private fun bronNaam(a: Asset, voorraad: DreamVoorraad): String? {
-    if (Instellingen.dreamBron == DreamBron.ALLES || !voorraad.uitBron(a.id)) return null
-    return when (Instellingen.dreamBron) {
-        DreamBron.ALLES -> null
-        DreamBron.ALBUM -> voorraad.naamVan(a.id) ?: Instellingen.dreamAlbumNamen.singleOrNull()
-        DreamBron.PERSOON -> voorraad.naamVan(a.id) ?: Instellingen.dreamPersoonNamen.singleOrNull()
-        DreamBron.COMBI -> voorraad.naamVan(a.id)
-        DreamBron.FAVORIETEN -> stringResource(R.string.sectie_favorieten)
-        DreamBron.HERINNERINGEN -> (LocalDate.now().year - a.datum.year).takeIf { it > 0 }?.let { pluralStringResource(R.plurals.jaren_geleden, it, it) }
+private fun sourceName(a: Asset, queue: DreamQueue): String? {
+    if (Settings.dreamSource == DreamSource.ALL || !queue.isFromSource(a.id)) return null
+    return when (Settings.dreamSource) {
+        DreamSource.ALL -> null
+        DreamSource.ALBUM -> queue.nameOf(a.id) ?: Settings.dreamAlbumNames.singleOrNull()
+        DreamSource.PERSON -> queue.nameOf(a.id) ?: Settings.dreamPersonNames.singleOrNull()
+        DreamSource.COMBO -> queue.nameOf(a.id)
+        DreamSource.FAVORITES -> stringResource(R.string.section_favorites)
+        DreamSource.MEMORIES -> (LocalDate.now().year - a.date.year).takeIf { it > 0 }?.let { pluralStringResource(R.plurals.years_ago, it, it) }
     }
 }
 
-private val SCHADUW = Shadow(Color(0xD9000000), Offset(0f, 2f), 10f)
+private val SHADOW = Shadow(Color(0xD9000000), Offset(0f, 2f), 10f)
 
-/** Zachte verschuiving van klok/tekst (een paar dp, elke 4 minuten): niets staat urenlang op exact dezelfde pixels. */
+/** Gentle shift of clock/text (a few dp, every 4 minutes): nothing stays on the exact same pixels for hours. */
 private val DRIFT = listOf(Offset(0f, 0f), Offset(10f, 6f), Offset(-6f, 12f), Offset(12f, -4f), Offset(-10f, -8f), Offset(4f, 10f))
 
-/** Geheugencache na elke wissel terugbrengen tot ±3 previews (huidige, vorige, volgende); de rest staat op schijf. */
-private const val GEHEUGEN = 24L * 1024 * 1024
+/** Trim memory cache after each transition to ~3 previews (current, previous, next); the rest stays on disk. */
+private const val MEMORY_LIMIT = 24L * 1024 * 1024
 
 @Composable
-fun DreamScherm(staat: DreamStaat) {
+fun DreamScreen(state: DreamState) {
     val ctx = LocalContext.current
-    val voorraad = remember { DreamVoorraad() }
-    val seconden = Instellingen.dreamSeconden
+    val queue = remember { DreamQueue() }
+    val seconds = Settings.dreamSeconds
 
-    // de lus: foto kiezen → preview laden → tonen → wachten op de tijd of een toets
+    // Loop: pick photo -> load preview -> show -> wait for timer or key press
     LaunchedEffect(Unit) {
-        if (Immich.sleutel.isBlank() || Immich.server.isBlank() || staat.testFout == "koppeling") { staat.melding = R.string.dream_niet_gekoppeld; return@LaunchedEffect }
+        if (Immich.key.isBlank() || Immich.server.isBlank() || state.testError == "koppeling") { state.message = R.string.dream_not_connected; return@LaunchedEffect }
         val loader = SingletonImageLoader.get(ctx)
-        suspend fun nieuw(): Asset? = when (staat.testFout) {
+        suspend fun nextPhoto(): Asset? = when (state.testError) {
             "leeg" -> null
             "net" -> throw java.net.ConnectException("test")
             "sleutel" -> throw java.io.IOException("Immich 401: test")
-            else -> voorraad.volgende()
+            else -> queue.next()
         }
-        /** mislukt: zonder foto een melding in het midden, met foto alleen het wolkje (de foto blijft staan) */
-        fun mislukt(m: Int) { if (staat.huidig == null) staat.melding = m else staat.storing = true }
-        var richting = 1
+        /** Failure: without a photo show centered message, with a photo only the cloud icon (photo stays). */
+        fun fail(m: Int) { if (state.current == null) state.message = m else state.errorIcon = true }
+        var direction = 1
         while (isActive) {
-            val g = staat.geschiedenis
-            var wacht = 20_000L
+            val h = state.history
+            var waitMs = 20_000L
             val a: Asset? = when {
-                richting < 0 && staat.plek > 0 -> { staat.plek--; g[staat.plek] }
-                richting < 0 -> staat.huidig // al bij de oudste: blijven staan
-                richting > 0 && staat.plek < g.lastIndex -> { staat.plek++; g[staat.plek] }
-                else -> runCatching { nieuw() }.fold(
-                    onSuccess = { n -> n?.also { g.add(it); if (g.size > 30) g.removeAt(0); staat.plek = g.lastIndex } },
+                direction < 0 && state.pos > 0 -> { state.pos--; h[state.pos] }
+                direction < 0 -> state.current // already at oldest: stay
+                direction > 0 && state.pos < h.lastIndex -> { state.pos++; h[state.pos] }
+                else -> runCatching { nextPhoto() }.fold(
+                    onSuccess = { n -> n?.also { h.add(it); if (h.size > 30) h.removeAt(0); state.pos = h.lastIndex } },
                     onFailure = { e ->
                         Log.w("Fotos", "screensaver: ${e.message}")
-                        val m = meldingVoor(e)
-                        if (m != R.string.dream_geen_verbinding) wacht = 60_000L
-                        mislukt(m); null
+                        val m = messageFor(e)
+                        if (m != R.string.dream_no_connection) waitMs = 60_000L
+                        fail(m); null
                     },
                 )
             }
             if (a == null) {
-                if (staat.huidig == null && staat.melding == null) staat.melding = R.string.dream_geen_fotos
-                richting = withTimeoutOrNull(wacht) { staat.wens.receive() } ?: 1
+                if (state.current == null && state.message == null) state.message = R.string.dream_no_photos
+                direction = withTimeoutOrNull(waitMs) { state.request.receive() } ?: 1
                 continue
             }
-            if (a.id != staat.huidig?.id) {
-                // eerst de preview binnenhalen (max. 8 s), dan pas wisselen: geen half geladen of lege foto
-                val ok = withTimeoutOrNull(8_000) { runCatching { loader.execute(previewVerzoek(ctx, a.id)) is SuccessResult }.getOrDefault(false) } == true
+            if (a.id != state.current?.id) {
+                // Fetch the preview first (max 8 s), then switch: no half-loaded or blank photo
+                val ok = withTimeoutOrNull(8_000) { runCatching { loader.execute(previewRequest(ctx, a.id)) is SuccessResult }.getOrDefault(false) } == true
                 if (!ok) {
-                    Log.w("Fotos", "screensaver: preview ${a.id} niet geladen")
-                    mislukt(R.string.dream_geen_verbinding)
-                    richting = withTimeoutOrNull(wacht) { staat.wens.receive() } ?: 1
+                    Log.w("Fotos", "screensaver: preview ${a.id} not loaded")
+                    fail(R.string.dream_no_connection)
+                    direction = withTimeoutOrNull(waitMs) { state.request.receive() } ?: 1
                     continue
                 }
-                staat.melding = null
-                staat.storing = false
-                staat.huidig = a
-                // na de overgang: cache klein houden en de volgende alvast klaarzetten
-                launch { delay(1800); loader.memoryCache?.trimToSize(GEHEUGEN); voorraad.kijkVooruit(ctx) }
+                state.message = null
+                state.errorIcon = false
+                state.current = a
+                // After transition: keep cache small and prepare the next one
+                launch { delay(1800); loader.memoryCache?.trimToSize(MEMORY_LIMIT); queue.lookAhead(ctx) }
             }
-            staat.ronde++
-            richting = withTimeoutOrNull(Instellingen.dreamSeconden * 1000L) { staat.wens.receive() } ?: 1
+            state.round++
+            direction = withTimeoutOrNull(Settings.dreamSeconds * 1000L) { state.request.receive() } ?: 1
         }
     }
 
-    // inbranden voorkomen: alles wat stilstaat schuift af en toe een paar dp
-    val driftDoel by produceState(DRIFT[0]) { var i = 0; while (true) { delay(4 * 60_000L); i++; value = DRIFT[i % DRIFT.size] } }
-    val drift by animateOffsetAsState(driftDoel, tween(4000), label = "drift")
-    val verschuif = Modifier.offset { IntOffset((drift.x * density).roundToInt(), (drift.y * density).roundToInt()) }
+    // Prevent burn-in: everything static shifts a few dp occasionally
+    val driftTarget by produceState(DRIFT[0]) { var i = 0; while (true) { delay(4 * 60_000L); i++; value = DRIFT[i % DRIFT.size] } }
+    val drift by animateOffsetAsState(driftTarget, tween(4000), label = "drift")
+    val shift = Modifier.offset { IntOffset((drift.x * density).roundToInt(), (drift.y * density).roundToInt()) }
 
     BoxWithConstraints(Modifier.fillMaxSize().background(Color.Black)) {
-        val dicht = LocalDensity.current
-        val breedtePx = with(dicht) { maxWidth.roundToPx() }
-        val hoogtePx = with(dicht) { maxHeight.roundToPx() }
-        val huidig = staat.huidig
-        val kenBurns = Instellingen.dreamKenBurns
+        val density = LocalDensity.current
+        val widthPx = with(density) { maxWidth.roundToPx() }
+        val heightPx = with(density) { maxHeight.roundToPx() }
+        val current = state.current
+        val kenBurns = Settings.dreamKenBurns
 
         AnimatedContent(
-            targetState = huidig, contentKey = { it?.id },
+            targetState = current, contentKey = { it?.id },
             transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
             label = "dream",
         ) { a ->
-            val zicht by transition.animateFloat(transitionSpec = { tween(900) }, label = "zicht") {
+            val vis by transition.animateFloat(transitionSpec = { tween(900) }, label = "vis") {
                 if (it == EnterExitState.Visible) 1f else 0f
             }
-            if (a != null) DreamBeeld(a, actief = a.id == huidig?.id, kenBurns = kenBurns, duurMs = seconden * 1000L + 2500, zicht = { zicht })
+            if (a != null) DreamPhoto(a, active = a.id == current?.id, kenBurns = kenBurns, durationMs = seconds * 1000L + 2500, alpha = { vis })
         }
 
-        val dreamKaart = Instellingen.dreamKaart.schaal
-        if (dreamKaart > 0f) KaartLaag(doel = huidig?.takeIf { it.lat != null && it.lon != null }, breedtePx = breedtePx, hoogtePx = hoogtePx, maat = dreamKaart)
+        val dreamMap = Settings.dreamMap.scale
+        if (dreamMap > 0f) CountryMapOverlay(target = current?.takeIf { it.lat != null && it.lon != null }, widthPx = widthPx, heightPx = heightPx, sizeScale = dreamMap)
 
-        if (Instellingen.dreamKlok) Klok(Modifier.align(Alignment.TopStart).then(verschuif).padding(start = 48.dp, top = 36.dp))
+        if (Settings.dreamClock) Clock(Modifier.align(Alignment.TopStart).then(shift).padding(start = 48.dp, top = 36.dp))
 
-        // linksonder: ringetje (tijd tot de volgende foto) + datum en plaats/bron
-        if (huidig != null) Row(Modifier.align(Alignment.BottomStart).then(verschuif).padding(start = 48.dp, bottom = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+        // Bottom-left: ring (time until next photo) + date and location/source
+        if (current != null) Row(Modifier.align(Alignment.BottomStart).then(shift).padding(start = 48.dp, bottom = 40.dp), verticalAlignment = Alignment.CenterVertically) {
             val ring = remember { Animatable(0f) }
-            LaunchedEffect(staat.ronde) { ring.snapTo(0f); if (staat.ronde > 0) ring.animateTo(1f, tween(seconden * 1000, easing = LinearEasing)) }
-            if (Instellingen.dreamRing) VoortgangRing({ ring.value }, Modifier.size(22.dp))
-            if (staat.storing) Icon(Icons.Filled.CloudOff, null, Modifier.padding(start = if (Instellingen.dreamRing) 10.dp else 0.dp).size(20.dp), tint = Color(0xB3FFFFFF))
-            if (Instellingen.dreamInfo) Column(Modifier.padding(start = if (Instellingen.dreamRing || staat.storing) 16.dp else 0.dp)) {
-                Text(huidig.datum.format(Formaat.dagLang).replaceFirstChar { it.titlecase(Taal.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 18.sp, color = Color.White, shadow = SCHADUW), maxLines = 1)
-                // met kaart staat de plaats bij de stip; anders hier
-                val plaats = listOfNotNull(huidig.stad, huidig.land).joinToString(", ").takeIf { it.isNotEmpty() && !(Instellingen.dreamKaart != KaartMaat.UIT && huidig.lat != null) }
-                // albums van de foto (zonder het gekozen bronalbum, dat staat er al als bronnaam)
-                val bron = bronNaam(huidig, voorraad)
-                // andere albums dan de bron(nen) zelf; met "ander album tonen" vervangen die de bronnaam ("Verjaardag" i.p.v. "Screensaver")
-                val bronnen = if (Instellingen.dreamBron == DreamBron.ALBUM || Instellingen.dreamBron == DreamBron.COMBI) Instellingen.dreamAlbumNamen.toSet() + listOfNotNull(bron) else setOfNotNull(bron)
-                val anders = albumNamen(huidig.id).filter { it !in bronnen }
-                val albums = anders.takeIf { it.isNotEmpty() }?.let(::albumRegel)
-                val toonBron = bron.takeUnless { albums != null && Instellingen.dreamAnderAlbum }
-                val regel = listOfNotNull(plaats, toonBron, albums).joinToString("  ·  ")
-                if (regel.isNotEmpty()) Text(regel, style = TextStyle(fontFamily = Overpass, fontSize = 15.sp, color = Color(0xD9FFFFFF), shadow = SCHADUW), maxLines = 1)
+            LaunchedEffect(state.round) { ring.snapTo(0f); if (state.round > 0) ring.animateTo(1f, tween(seconds * 1000, easing = LinearEasing)) }
+            if (Settings.dreamRing) ProgressRing({ ring.value }, Modifier.size(22.dp))
+            if (state.errorIcon) Icon(Icons.Filled.CloudOff, null, Modifier.padding(start = if (Settings.dreamRing) 10.dp else 0.dp).size(20.dp), tint = Color(0xB3FFFFFF))
+            if (Settings.dreamInfo) Column(Modifier.padding(start = if (Settings.dreamRing || state.errorIcon) 16.dp else 0.dp)) {
+                Text(current.date.format(DateFormats.dayLong).replaceFirstChar { it.titlecase(Language.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 18.sp, color = Color.White, shadow = SHADOW), maxLines = 1)
+                // With map, the place is shown near the dot; otherwise here
+                val place = listOfNotNull(current.city, current.country).joinToString(", ").takeIf { it.isNotEmpty() && !(Settings.dreamMap != MapSize.OFF && current.lat != null) }
+                // Albums containing the photo (excluding the chosen source album, already shown as source name)
+                val source = sourceName(current, queue)
+                // Albums other than the source(s); with "show other album" those replace the source name ("Birthday" instead of "Screensaver")
+                val sources = if (Settings.dreamSource == DreamSource.ALBUM || Settings.dreamSource == DreamSource.COMBO) Settings.dreamAlbumNames.toSet() + listOfNotNull(source) else setOfNotNull(source)
+                val other = albumNames(current.id).filter { it !in sources }
+                val albums = other.takeIf { it.isNotEmpty() }?.let(::albumLine)
+                val showSource = source.takeUnless { albums != null && Settings.dreamOtherAlbum }
+                val line = listOfNotNull(place, showSource, albums).joinToString("  ·  ")
+                if (line.isNotEmpty()) Text(line, style = TextStyle(fontFamily = Overpass, fontSize = 15.sp, color = Color(0xD9FFFFFF), shadow = SHADOW), maxLines = 1)
             }
         }
 
-        if (huidig == null) staat.melding?.let { m ->
-            Column(Modifier.align(Alignment.Center).then(verschuif).padding(horizontal = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(if (m == R.string.dream_geen_verbinding) Icons.Filled.CloudOff else Icons.Filled.PhotoLibrary, null, Modifier.size(44.dp), tint = Kleur.zacht)
-                Text(stringResource(m), style = MaterialTheme.typography.bodyLarge, color = Kleur.zacht, modifier = Modifier.padding(top = 10.dp))
+        if (current == null) state.message?.let { m ->
+            Column(Modifier.align(Alignment.Center).then(shift).padding(horizontal = 64.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(if (m == R.string.dream_no_connection) Icons.Filled.CloudOff else Icons.Filled.PhotoLibrary, null, Modifier.size(44.dp), tint = AppColors.muted)
+                Text(stringResource(m), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted, modifier = Modifier.padding(top = 10.dp))
             }
         }
     }
 }
 
-/** Klok + datum in de taal van de app; de tekst verandert alleen als de minuut wisselt. */
+/** Clock + date in the app's language; text only updates when the minute changes. */
 @Composable
-private fun Klok(modifier: Modifier) {
-    val nu by produceState(LocalDateTime.now()) { while (true) { value = LocalDateTime.now().withSecond(0).withNano(0); delay(1000) } }
+private fun Clock(modifier: Modifier) {
+    val now by produceState(LocalDateTime.now()) { while (true) { value = LocalDateTime.now().withSecond(0).withNano(0); delay(1000) } }
     Column(modifier) {
-        Text(nu.format(Formaat.tijd), style = TextStyle(fontFamily = Overpass, fontSize = 64.sp, fontWeight = FontWeight(600), color = Color.White, shadow = SCHADUW), maxLines = 1)
-        Text(nu.format(Formaat.dagLang).replaceFirstChar { it.titlecase(Taal.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 22.sp, color = Color(0xE6FFFFFF), shadow = SCHADUW), maxLines = 1)
+        Text(now.format(DateFormats.time), style = TextStyle(fontFamily = Overpass, fontSize = 64.sp, fontWeight = FontWeight(600), color = Color.White, shadow = SHADOW), maxLines = 1)
+        Text(now.format(DateFormats.dayLong).replaceFirstChar { it.titlecase(Language.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 22.sp, color = Color(0xE6FFFFFF), shadow = SHADOW), maxLines = 1)
     }
 }
 
 /**
- * Eén foto: liggende foto's rond 3:2 vullen het scherm (bijgesneden), de rest past erin met de thumbhash als wazige
- * achtergrond. Ken Burns: langzaam inzoomen met een lichte zwenking, alleen op de actieve foto (de vertrekkende houdt
- * zijn zoom, anders springt hij terug tijdens de crossfade).
+ * Single photo: landscape photos around 3:2 fill the screen (cropped), the rest fits inside with thumbhash as
+ * blurred background. Ken Burns: slow zoom with a gentle pan, only on the active photo (the outgoing one keeps
+ * its zoom, otherwise it snaps back during the crossfade).
  */
 @Composable
-private fun DreamBeeld(a: Asset, actief: Boolean, kenBurns: Boolean, duurMs: Long, zicht: () -> Float) {
-    Box(Modifier.fillMaxSize().graphicsLayer { alpha = zicht(); compositingStrategy = CompositingStrategy.ModulateAlpha }, contentAlignment = Alignment.Center) {
-        val vullen = a.ratio in 1.45f..2.0f
+private fun DreamPhoto(a: Asset, active: Boolean, kenBurns: Boolean, durationMs: Long, alpha: () -> Float) {
+    Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha(); compositingStrategy = CompositingStrategy.ModulateAlpha }, contentAlignment = Alignment.Center) {
+        val fill = a.ratio in 1.45f..2.0f
         // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
         val progress = remember(a.id) { Animatable(0f) }
         val mode = remember(a.id) { kotlin.math.abs(a.id.hashCode()) % 4 }
         LaunchedEffect(a.id, kenBurns) {
-            if (kenBurns && actief) {
+            if (kenBurns && active) {
                 progress.snapTo(0f)
-                progress.animateTo(1f, tween(duurMs.toInt(), easing = LinearEasing))
+                progress.animateTo(1f, tween(durationMs.toInt(), easing = LinearEasing))
             }
         }
         val p = progress.value
@@ -513,40 +513,40 @@ private fun DreamBeeld(a: Asset, actief: Boolean, kenBurns: Boolean, duurMs: Lon
             translationY = panYVal * size.height
         }
         val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
-        if (hash != null && !vullen && Instellingen.wazig) {
+        if (hash != null && !fill && Settings.blurredBackground) {
             Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
             Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
             if (!kenBurns) {
                 Image(hash, null, Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true), contentScale = ContentScale.FillBounds)
             }
         }
-        AsyncImage(preview(a.id), null, mod, contentScale = if (vullen) ContentScale.Crop else ContentScale.Fit)
+        AsyncImage(previewImage(a.id), null, mod, contentScale = if (fill) ContentScale.Crop else ContentScale.Fit)
     }
 }
 
 /**
- * De screensaver zelf. Compose in een DreamService: de ComposeView heeft een LifecycleOwner, SavedStateRegistryOwner
- * en ViewModelStoreOwner nodig in de view-boom; die speelt de service zelf (levensloop: aangekoppeld = CREATED,
- * dromen = RESUMED). Toetsen gaan via dispatchKeyEvent (interactief), niet via Compose.
+ * The screensaver itself. Compose inside a DreamService: ComposeView needs a LifecycleOwner, SavedStateRegistryOwner,
+ * and ViewModelStoreOwner in the view tree; the service acts as all three (lifecycle: attached = CREATED,
+ * dreaming = RESUMED). Keys go through dispatchKeyEvent (interactive), not through Compose.
  */
-class FotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
-    private val register = LifecycleRegistry(this)
-    private val bewaarder = SavedStateRegistryController.create(this)
-    override val lifecycle: Lifecycle get() = register
-    override val savedStateRegistry: SavedStateRegistry get() = bewaarder.savedStateRegistry
+class PhotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
+    private val registry = LifecycleRegistry(this)
+    private val savedState = SavedStateRegistryController.create(this)
+    override val lifecycle: Lifecycle get() = registry
+    override val savedStateRegistry: SavedStateRegistry get() = savedState.savedStateRegistry
     override val viewModelStore = ViewModelStore()
-    private val staat = DreamStaat()
+    private val state = DreamState()
 
     override fun onCreate() {
         super.onCreate()
-        // Zelfde proces als de app (moet, zie het manifest). Staat de app nog in het geheugen (bv. met de wereldkaart),
-        // dan eerst alles wat weg kan vrijgeven: het systeem rekent het hele proces als voorgrond zolang de screensaver
-        // draait, en ruimde bij het wekken anders van alles op (zwart scherm, 21-10). De kaart zelf gaat weg zodra de
-        // activity stopt (KaartScherm).
-        (application as? App)?.ontlast("screensaver")
-        bewaarder.performAttach()
-        bewaarder.performRestore(null)
-        register.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
+        // Same process as the app (required, see manifest). If the app is still in memory (e.g. with the world map),
+        // release everything possible first: the system treats the whole process as foreground while the screensaver
+        // runs, and otherwise killed things on wake (black screen, 21-10). The map itself is removed when the
+        // activity stops (MapScreen).
+        (application as? App)?.releaseMemory("screensaver")
+        savedState.performAttach()
+        savedState.performRestore(null)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
     }
 
     override fun onAttachedToWindow() {
@@ -554,96 +554,96 @@ class FotoDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner, ViewM
         isInteractive = true
         isFullscreen = true
         isScreenBright = true
-        val view = ComposeView(Taal.wrap(this))
+        val view = ComposeView(Language.wrap(this))
         view.setViewTreeLifecycleOwner(this)
         view.setViewTreeSavedStateRegistryOwner(this)
         view.setViewTreeViewModelStoreOwner(this)
-        view.setContent { FotosThema { DreamScherm(staat) } }
+        view.setContent { PhotosTheme { DreamScreen(state) } }
         setContentView(view)
         isAttached = true
-        Log.i("Fotos", "screensaver: gestart (${Instellingen.dreamBron}, ${Instellingen.dreamSeconden} s)")
+        Log.i("Fotos", "screensaver: started (${Settings.dreamSource}, ${Settings.dreamSeconds} s)")
     }
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
-        register.handleLifecycleEvent(Lifecycle.Event.ON_START)
-        register.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_RESUME)
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         when (event.keyCode) {
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) staat.stuur(if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
+                if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) state.send(if (event.keyCode == KeyEvent.KEYCODE_DPAD_LEFT) -1 else 1)
                 return true
             }
-            // volume gewoon laten werken, zonder de screensaver te sluiten
+            // Let volume keys work normally without closing the screensaver
             KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE -> return super.dispatchKeyEvent(event)
         }
-        // Andere toets: wakker worden bij het LOSLATEN (de key-up mag niet bij de app eronder terechtkomen: in een
-        // launcher is dat een klik op de tegel die focus heeft). Blijft de toets ingedrukt, of reageert het systeem
-        // niet op wakeUp(), dan na 1,5 s alsnog: de screensaver mag nooit blijven hangen.
-        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) wekUiterlijk(1500)
-        if (event.action == KeyEvent.ACTION_UP) wek()
+        // Any other key: wake on RELEASE (key-up must not reach the app underneath: in a launcher that clicks
+        // the focused tile). If held down, or the system ignores wakeUp(), force finish after 1.5 s: the screensaver
+        // must never get stuck.
+        if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0) wakeLatest(1500)
+        if (event.action == KeyEvent.ACTION_UP) wake()
         return true
     }
 
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
-    private var gewekt = false
+    private var woken = false
 
-    private fun wek() {
-        if (gewekt) return
-        gewekt = true
-        Log.i("Fotos", "screensaver: toets, wakker worden")
+    private fun wake() {
+        if (woken) return
+        woken = true
+        Log.i("Fotos", "screensaver: key press, waking up")
         runCatching { wakeUp() }.onFailure { Log.w("Fotos", "screensaver wakeUp", it); finish() }
-        // vangnet: na 2 s nog niet weg → hard stoppen
-        handler.postDelayed({ if (isAttached) { Log.w("Fotos", "screensaver: wakeUp hielp niet, finish()"); runCatching { finish() } } }, 2000)
+        // Safety net: still not gone after 2 s -> hard stop
+        handler.postDelayed({ if (isAttached) { Log.w("Fotos", "screensaver: wakeUp didn't work, finish()"); runCatching { finish() } } }, 2000)
     }
 
-    private fun wekUiterlijk(ms: Long) = handler.postDelayed({ if (!gewekt) wek() }, ms)
+    private fun wakeLatest(ms: Long) = handler.postDelayed({ if (!woken) wake() }, ms)
 
     private var isAttached = false
 
     override fun onDreamingStopped() {
-        register.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-        register.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         super.onDreamingStopped()
     }
 
     override fun onDetachedFromWindow() {
         isAttached = false
         handler.removeCallbacksAndMessages(null)
-        if (register.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            register.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-            register.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        if (registry.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+            registry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
+            registry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
         }
-        register.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        registry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
         viewModelStore.clear()
         super.onDetachedFromWindow()
-        Log.i("Fotos", "screensaver: gestopt")
+        Log.i("Fotos", "screensaver: stopped")
     }
 }
 
-/** Instellingen → Screensaver → Voorbeeld: dezelfde weergave als gewone activity (ook om te testen zonder de systeeminstelling). */
-class VoorbeeldActivity : ComponentActivity() {
-    override fun attachBaseContext(base: Context) = super.attachBaseContext(Taal.wrap(base))
+/** Settings -> Screensaver -> Preview: same view as a regular activity (also for testing without the system setting). */
+class PreviewActivity : ComponentActivity() {
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(Language.wrap(base))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Immich.kiesAccount(this, null)
-        val staat = DreamStaat().apply { testFout = intent.getStringExtra("test_fout") }
+        Immich.selectAccount(this, null)
+        val state = DreamState().apply { testError = intent.getStringExtra("test_fout") }
         setContent {
-            FotosThema {
+            PhotosTheme {
                 Box(
                     Modifier.fillMaxSize().onPreviewKeyEvent { e ->
                         if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
                         when (e.key.nativeKeyCode) {
-                            KeyEvent.KEYCODE_DPAD_LEFT -> { staat.stuur(-1); true }
-                            KeyEvent.KEYCODE_DPAD_RIGHT -> { staat.stuur(1); true }
+                            KeyEvent.KEYCODE_DPAD_LEFT -> { state.send(-1); true }
+                            KeyEvent.KEYCODE_DPAD_RIGHT -> { state.send(1); true }
                             KeyEvent.KEYCODE_VOLUME_UP, KeyEvent.KEYCODE_VOLUME_DOWN, KeyEvent.KEYCODE_VOLUME_MUTE -> false
                             else -> { finish(); true }
                         }
                     },
-                ) { DreamScherm(staat) }
+                ) { DreamScreen(state) }
             }
         }
     }

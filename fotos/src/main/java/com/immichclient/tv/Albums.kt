@@ -48,126 +48,125 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-enum class AlbumVolgorde(@StringRes val label: Int) { RECENT(R.string.volg_recent), NIEUW(R.string.volg_nieuwste_fotos), NAAM(R.string.volg_naam), AANTAL(R.string.volg_aantal) }
+enum class AlbumOrder(@StringRes val label: Int) { RECENT(R.string.sort_recent), NEWEST(R.string.sort_newest_photos), NAME(R.string.sort_name), COUNT(R.string.sort_count) }
 
-class AlbumsStaat(scope: CoroutineScope) {
+class AlbumsState(scope: CoroutineScope) {
     var albums by mutableStateOf<List<Album>>(emptyList())
-    var fout by mutableStateOf<String?>(null)
-    var volgorde by mutableStateOf(AlbumVolgorde.RECENT)
-    var alleenGedeeld by mutableStateOf(false)
-    var zoek by mutableStateOf("")
+    var error by mutableStateOf<String?>(null)
+    var order by mutableStateOf(AlbumOrder.RECENT)
+    var sharedOnly by mutableStateOf(false)
+    var query by mutableStateOf("")
     val grid = LazyGridState()
-    var laatsteFocus: String? = null
+    var lastFocus: String? = null
 
     init {
         scope.launch {
-            runCatching { Immich.albums() }.onSuccess { albums = it }.onFailure { fout = it.message; Log.w("Fotos", "albums", it) }
+            runCatching { Immich.albums() }.onSuccess { albums = it }.onFailure { error = it.message; Log.w("Photos", "albums", it) }
         }
     }
 
-    fun zichtbaar(): List<Album> {
-        val l = albums.filter { (!alleenGedeeld || it.gedeeld) && (zoek.isBlank() || zonderAccent(it.naam).contains(zonderAccent(zoek.trim()), ignoreCase = true)) && it.aantal > 0 }
-        return when (volgorde) {
-            AlbumVolgorde.RECENT -> l.sortedByDescending { it.bijgewerkt }
-            AlbumVolgorde.NIEUW -> l.sortedByDescending { it.tot }
-            AlbumVolgorde.NAAM -> l.sortedWith(compareBy(java.text.Collator.getInstance(Taal.locale)) { it.naam })
-            AlbumVolgorde.AANTAL -> l.sortedByDescending { it.aantal }
+    fun visible(): List<Album> {
+        val l = albums.filter { (!sharedOnly || it.shared) && (query.isBlank() || stripAccents(it.name).contains(stripAccents(query.trim()), ignoreCase = true)) && it.count > 0 }
+        return when (order) {
+            AlbumOrder.RECENT -> l.sortedByDescending { it.updatedAt }
+            AlbumOrder.NEWEST -> l.sortedByDescending { it.to }
+            AlbumOrder.NAME -> l.sortedWith(compareBy(java.text.Collator.getInstance(Language.locale)) { it.name })
+            AlbumOrder.COUNT -> l.sortedByDescending { it.count }
         }
     }
 }
 
-/** "Malaisie" vinden met "malaisie" (accenten negeren) */
-private fun zonderAccent(s: String) = java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}"), "")
-
 @Composable
-fun AlbumsScherm(staat: AlbumsStaat, nav: Nav) {
-    val lijst = remember(staat.albums, staat.volgorde, staat.alleenGedeeld, staat.zoek) { staat.zichtbaar() }
-    val eerste = remember { FocusRequester() }
-    val terug = remember { FocusRequester() }
-    var zoekOpen by remember { mutableStateOf(false) }
-    val zoekKnop = remember { FocusRequester() }
+fun AlbumsScreen(state: AlbumsState, nav: Nav) {
+    val list = remember(state.albums, state.order, state.sharedOnly, state.query) { state.visible() }
+    val first = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
+    var searchOpen by remember { mutableStateOf(false) }
+    val searchBtn = remember { FocusRequester() }
     var wasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(zoekOpen) { if (wasOpen && !zoekOpen) { delay(16); runCatching { zoekKnop.requestFocus() } }; wasOpen = zoekOpen }
+    LaunchedEffect(searchOpen) { if (wasOpen && !searchOpen) { delay(16); runCatching { searchBtn.requestFocus() } }; wasOpen = searchOpen }
 
     Box(Modifier.fillMaxSize()) {
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(5),
-        state = staat.grid,
-        contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 80.dp),
-        horizontalArrangement = Arrangement.spacedBy(18.dp),
-        verticalArrangement = Arrangement.spacedBy(22.dp),
-        modifier = Modifier.fillMaxSize(),
-    ) {
-        item(span = { GridItemSpan(maxLineSpan) }, key = "kop") {
-            Column {
-                SchermKop(stringResource(R.string.albums), pluralStringResource(R.plurals.albums_aantal, lijst.size, lijst.size) + if (staat.zoek.isNotBlank()) " " + stringResource(R.string.albums_met, staat.zoek) else "")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                    for (v in AlbumVolgorde.entries) {
-                        Keuze(
-                            selected = staat.volgorde == v, onClick = { staat.volgorde = v },
-                            modifier = if (v == AlbumVolgorde.RECENT) Modifier.focusRequester(eerste) else Modifier,
-                        tekst = stringResource(v.label))
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(5),
+            state = state.grid,
+            contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 80.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item(span = { GridItemSpan(maxLineSpan) }, key = "header") {
+                Column {
+                    ScreenHeader(stringResource(R.string.albums), pluralStringResource(R.plurals.albums_count, list.size, list.size) + if (state.query.isNotBlank()) " " + stringResource(R.string.albums_with, state.query) else "")
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        for (v in AlbumOrder.entries) {
+                            ChoiceChip(
+                                selected = state.order == v, onClick = { state.order = v },
+                                modifier = if (v == AlbumOrder.RECENT) Modifier.focusRequester(first) else Modifier,
+                                text = stringResource(v.label),
+                            )
+                        }
+                        ChoiceChip(selected = state.sharedOnly, onClick = { state.sharedOnly = !state.sharedOnly }, text = stringResource(R.string.shared))
+                        ChoiceChip(
+                            selected = state.query.isNotBlank(), onClick = { searchOpen = true }, modifier = Modifier.focusRequester(searchBtn),
+                            leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.width(18.dp)) },
+                            text = state.query.ifBlank { stringResource(R.string.find_album) },
+                        )
                     }
-                    Keuze(selected = staat.alleenGedeeld, onClick = { staat.alleenGedeeld = !staat.alleenGedeeld }, tekst = stringResource(R.string.gedeeld))
-                    Keuze(
-                        selected = staat.zoek.isNotBlank(), onClick = { zoekOpen = true }, modifier = Modifier.focusRequester(zoekKnop),
-                        leadingIcon = { Icon(Icons.Filled.Search, null, Modifier.width(18.dp)) },
-                    tekst = staat.zoek.ifBlank { stringResource(R.string.zoek_album) })
+                }
+            }
+            if (state.error != null && state.albums.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { StatusMessage(stringResource(R.string.albums_load_failed), state.error) }
+            items(list, key = { it.id }) { a ->
+                AlbumCard(
+                    a, if (a.id == state.lastFocus) Modifier.focusRequester(backFocus) else Modifier,
+                    onFocus = { state.lastFocus = a.id },
+                ) {
+                    nav.open(Screen.Timeline(a.name, albumSubtitle(a), Filter(albumId = a.id), !a.oldestFirst, false, nav.scope))
                 }
             }
         }
-        if (staat.fout != null && staat.albums.isEmpty()) item(span = { GridItemSpan(maxLineSpan) }) { Melding(stringResource(R.string.albums_niet_geladen), staat.fout) }
-        items(lijst, key = { it.id }) { a ->
-            AlbumKaart(
-                a, if (a.id == staat.laatsteFocus) Modifier.focusRequester(terug) else Modifier,
-                onFocus = { staat.laatsteFocus = a.id },
-            ) {
-                nav.open(Scherm.Tijdlijn(a.naam, albumSub(a), Filter(albumId = a.id), !a.oudsteEerst, false, nav.scope))
-            }
-        }
-    }
-    ScrolBalk(
-        fractie = { fractieVan(staat.grid, 1) },
-        beweging = { staat.grid.firstVisibleItemIndex * 7919 + staat.grid.firstVisibleItemScrollOffset / 200 },
-        scrolbaar = { staat.grid.canScrollForward || staat.grid.canScrollBackward },
-        label = { null },
-        sub = { "${Taal.getal((staat.grid.firstVisibleItemIndex - 1).coerceAtLeast(0) + 1)} / ${Taal.getal(lijst.size)}" },
-        modifier = Modifier.align(Alignment.CenterEnd),
-    )
+        Scrollbar(
+            fraction = { fractionOf(state.grid, 1) },
+            movement = { state.grid.firstVisibleItemIndex * 7919 + state.grid.firstVisibleItemScrollOffset / 200 },
+            scrollable = { state.grid.canScrollForward || state.grid.canScrollBackward },
+            label = { null },
+            sub = { "${Language.number((state.grid.firstVisibleItemIndex - 1).coerceAtLeast(0) + 1)} / ${Language.number(list.size)}" },
+            modifier = Modifier.align(Alignment.CenterEnd),
+        )
     }
     LaunchedEffect(Unit) {
         delay(30)
-        if (staat.laatsteFocus == null || runCatching { terug.requestFocus() }.isFailure) runCatching { eerste.requestFocus() }
+        if (state.lastFocus == null || runCatching { backFocus.requestFocus() }.isFailure) runCatching { first.requestFocus() }
     }
-    if (zoekOpen) TekstInvoer(stringResource(R.string.zoek_album), staat.zoek, live = { staat.zoek = it }, actie = stringResource(R.string.actie_klaar), sluit = { zoekOpen = false }) {
-        staat.zoek = it; zoekOpen = false
+    if (searchOpen) TextInputOverlay(stringResource(R.string.find_album), state.query, live = { state.query = it }, action = stringResource(R.string.action_done), close = { searchOpen = false }) {
+        state.query = it; searchOpen = false
     }
 }
 
-fun albumSub(a: Album): String {
-    val periode = when {
-        a.van == null -> null
-        a.tot == null || a.van.withDayOfMonth(1) == a.tot.withDayOfMonth(1) -> a.van.format(Formaat.maandKort)
-        else -> a.van.format(Formaat.maandKort) + " – " + a.tot.format(Formaat.maandKort)
+fun albumSubtitle(a: Album): String {
+    val period = when {
+        a.from == null -> null
+        a.to == null || a.from.withDayOfMonth(1) == a.to.withDayOfMonth(1) -> a.from.format(DateFormats.monthShort)
+        else -> a.from.format(DateFormats.monthShort) + " – " + a.to.format(DateFormats.monthShort)
     }
-    return listOfNotNull(Taal.meervoud(R.plurals.items, a.aantal, a.aantal), periode, if (a.gedeeld) Taal.s(R.string.gedeeld_klein) else null).joinToString("  ·  ")
+    return listOfNotNull(Language.plural(R.plurals.items, a.count, a.count), period, if (a.shared) Language.s(R.string.shared_lower) else null).joinToString("  ·  ")
 }
 
 @Composable
-private fun AlbumKaart(a: Album, modifier: Modifier, onFocus: () -> Unit, onKlik: () -> Unit) {
+private fun AlbumCard(a: Album, modifier: Modifier, onFocus: () -> Unit, onClick: () -> Unit) {
     Column {
         Card(
-            onClick = onKlik,
+            onClick = onClick,
             modifier = modifier.fillMaxWidth().aspectRatio(1f).onFocusChanged { if (it.isFocused) onFocus() },
             shape = CardDefaults.shape(RoundedCornerShape(14.dp)),
             scale = CardDefaults.scale(focusedScale = 1.05f),
         ) {
-            Box(Modifier.fillMaxSize().background(Kleur.vlakHoog)) {
-                if (a.omslag != null) AsyncImage(beeld(Immich.thumb(a.omslag)), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                else Icon(Icons.Filled.PhotoLibrary, null, Modifier.align(Alignment.Center), tint = Kleur.zacht)
+            Box(Modifier.fillMaxSize().background(AppColors.surfaceHigh)) {
+                if (a.cover != null) AsyncImage(imageRequest(Immich.thumb(a.cover)), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+                else Icon(Icons.Filled.PhotoLibrary, null, Modifier.align(Alignment.Center), tint = AppColors.muted)
             }
         }
-        Text(a.naam, style = MaterialTheme.typography.titleSmall, maxLines = 2, modifier = Modifier.padding(top = 8.dp))
-        Text(albumSub(a), style = MaterialTheme.typography.bodySmall, maxLines = 1, color = Color(0xFFA1A1AA))
+        Text(a.name, style = MaterialTheme.typography.titleSmall, maxLines = 2, modifier = Modifier.padding(top = 8.dp))
+        Text(albumSubtitle(a), style = MaterialTheme.typography.bodySmall, maxLines = 1, color = Color(0xFFA1A1AA))
     }
 }

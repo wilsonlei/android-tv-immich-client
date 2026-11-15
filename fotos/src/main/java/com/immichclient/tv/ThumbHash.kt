@@ -12,24 +12,24 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * ThumbHash (github.com/evanw/thumbhash, MIT): ~25 bytes per foto die Immich meelevert. Daaruit een wazig
- * 32 px-plaatje als voorvertoning, zodat er tijdens snel scrollen nooit lege vakken staan.
+ * ThumbHash (github.com/evanw/thumbhash, MIT): ~25 bytes per photo provided by Immich. Decodes into a blurry
+ * 32 px placeholder image so there are never blank tiles during fast scrolling.
  */
 object ThumbHash {
-    private val cache = LruCache<String, ImageBitmap>(3000) // 32×32×4 B ≈ 4 kB per stuk
+    private val cache = LruCache<String, ImageBitmap>(3000) // 32x32x4 B ~ 4 kB each
 
     fun bitmap(hash: String): ImageBitmap? {
         cache.get(hash)?.let { return it }
-        val b = runCatching { decodeer(Base64.decode(hash, Base64.DEFAULT)) }.getOrNull() ?: return null
+        val b = runCatching { decode(Base64.decode(hash, Base64.DEFAULT)) }.getOrNull() ?: return null
         cache.put(hash, b)
         return b
     }
 
     fun inCache(hash: String): ImageBitmap? = cache.get(hash)
 
-    fun leeg() = cache.evictAll()
+    fun clear() = cache.evictAll()
 
-    private fun decodeer(h: ByteArray): ImageBitmap {
+    private fun decode(h: ByteArray): ImageBitmap {
         fun u(i: Int) = h[i].toInt() and 0xFF
         val header24 = u(0) or (u(1) shl 8) or (u(2) shl 16)
         val header16 = u(3) or (u(4) shl 8)
@@ -48,7 +48,7 @@ object ThumbHash {
 
         val acStart = if (hasAlpha) 6 else 5
         var acIndex = 0
-        fun kanaal(nx: Int, ny: Int, scale: Float): FloatArray {
+        fun channel(nx: Int, ny: Int, scale: Float): FloatArray {
             val ac = ArrayList<Float>()
             for (cy in 0 until ny) {
                 var cx = if (cy > 0) 0 else 1
@@ -60,10 +60,10 @@ object ThumbHash {
             }
             return ac.toFloatArray()
         }
-        val lAc = kanaal(lx, ly, lScale)
-        val pAc = kanaal(3, 3, pScale * 1.25f)
-        val qAc = kanaal(3, 3, qScale * 1.25f)
-        val aAc = if (hasAlpha) kanaal(5, 5, aScale) else null
+        val lAc = channel(lx, ly, lScale)
+        val pAc = channel(3, 3, pScale * 1.25f)
+        val qAc = channel(3, 3, qScale * 1.25f)
+        val aAc = if (hasAlpha) channel(5, 5, aScale) else null
 
         val ratio = lx.toFloat() / ly
         val w = (if (ratio > 1) 32f else 32 * ratio).roundToInt().coerceAtLeast(1)
@@ -101,8 +101,8 @@ object ThumbHash {
                 val b = l - 2f / 3f * p
                 val r = (3 * l - b + q) / 2
                 val g = r - q
-                fun k(v: Float) = (255 * min(1f, max(0f, v))).toInt()
-                px[y * w + x] = (k(a) shl 24) or (k(r) shl 16) or (k(g) shl 8) or k(b)
+                fun c(v: Float) = (255 * min(1f, max(0f, v))).toInt()
+                px[y * w + x] = (c(a) shl 24) or (c(r) shl 16) or (c(g) shl 8) or c(b)
             }
         }
         return Bitmap.createBitmap(px, w, hh, Bitmap.Config.ARGB_8888).asImageBitmap()

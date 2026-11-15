@@ -1,22 +1,29 @@
 package com.immichclient.tv
 
+import android.app.ActivityManager
 import android.app.Application
+import android.content.Context
+import android.content.Intent
+import android.graphics.Bitmap
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import android.view.KeyEvent
 import androidx.activity.ComponentActivity
-import androidx.annotation.StringRes
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Explore
@@ -28,29 +35,28 @@ import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.foundation.focusGroup
-import androidx.compose.ui.focus.focusProperties
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.nativeKeyCode
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.tv.material3.DrawerValue
 import androidx.tv.material3.Icon
-import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.ModalNavigationDrawer
 import androidx.tv.material3.NavigationDrawerItem
@@ -58,441 +64,416 @@ import androidx.tv.material3.NavigationDrawerItemDefaults
 import androidx.tv.material3.Text
 import androidx.tv.material3.rememberDrawerState
 import coil3.ImageLoader
-import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import coil3.disk.DiskCache
 import coil3.memory.MemoryCache
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.allowHardware
+import coil3.request.bitmapConfig
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
+import java.io.File
+import kotlin.math.roundToInt
 
-class App : Application(), SingletonImageLoader.Factory {
+class App : Application() {
     override fun onCreate() {
         super.onCreate()
-        Taal.start(this)
-        Immich.kiesAccount(this, null)
-        Diagnose.start(this)
+        Language.start(this)
+        Diagnostics.start(this)
+        Settings.load(this, null)
+        // Coil: single ImageLoader for the app + screensaver, sharing OkHttp client (auth header + timeout) and caches
+        SingletonImageLoader.setSafe { ctx ->
+            ImageLoader.Builder(ctx)
+                .components { add(OkHttpNetworkFetcherFactory(callFactory = { Immich.http })) }
+                .memoryCache { MemoryCache.Builder().maxSizePercent(ctx, 0.25).build() }
+                .diskCache { DiskCache.Builder().directory(File(ctx.cacheDir, "coil").toOkioPath()).maxSizeBytes(512L * 1024 * 1024).build() }
+                .bitmapConfig(Bitmap.Config.RGB_565)
+                .allowHardware(true)
+                .build()
+        }
+        val am = getSystemService(ACTIVITY_SERVICE) as ActivityManager
+        Log.i("Fotos", "app started: memClass=${am.memoryClass}MB, large=${am.largeMemoryClass}MB, lowRam=${am.isLowRamDevice}")
     }
 
-    /**
-     * Eén ImageLoader voor alles: OkHttp mét sleutel, 400 MB op schijf (thumbnails ~15 kB, previews ~300 kB; een
-     * tv-box heeft vaak maar een paar GB vrij, dus niet groter). Geheugencache bewust klein en vast: een box met 2 GB
-     * ruimt bij geheugennood ook de app vooraan op (gezien tijdens een video). Bitmaps zijn hardware-bitmaps
-     * (GPU-geheugen, telt mee in "Graphics" van meminfo); met 35 % van de grote heap stond er 220 MB aan previews in de cache.
-     */
-    override fun newImageLoader(context: PlatformContext) = ImageLoader.Builder(context)
-        .components { add(OkHttpNetworkFetcherFactory(callFactory = { Immich.http })) }
-        .memoryCache { MemoryCache.Builder().maxSizeBytes(CACHE_MB * 1024L * 1024).build() }
-        .diskCache { DiskCache.Builder().directory(cacheDir.resolve("beelden").toOkioPath()).maxSizeBytes(400L * 1024 * 1024).build() }
-        .build()
-
-    // Geheugennood of naar de achtergrond: cache leeg (thumbnails komen in ms terug van schijf).
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (level >= TRIM_MEMORY_RUNNING_LOW) {
-            android.util.Log.i("Fotos", "onTrimMemory $level: geheugencache leeg")
-            SingletonImageLoader.get(this).memoryCache?.clear()
-            openKaart?.onLowMemory() // MapLibre: tegelcache in het geheugen leeg
-            if (level >= TRIM_MEMORY_RUNNING_CRITICAL) ThumbHash.leeg()
+        if (level >= TRIM_MEMORY_BACKGROUND) releaseMemory("trim:$level")
+        else if (level >= TRIM_MEMORY_RUNNING_LOW) {
+            SingletonImageLoader.get(this).memoryCache?.trimToSize(16L * 1024 * 1024)
+            ThumbHash.clear()
         }
     }
 
-    /** Alles vrijgeven wat zonder schade weg kan (beeldcache, thumbhashes, MapLibre-tegels), bv. als de screensaver start. */
-    fun ontlast(waarom: String) {
-        android.util.Log.i("Fotos", "ontlasten ($waarom)")
+    /** Release caches when hidden or before starting the screensaver. */
+    fun releaseMemory(reason: String) {
+        Log.i("Fotos", "releaseMemory ($reason)")
         SingletonImageLoader.get(this).memoryCache?.clear()
-        ThumbHash.leeg()
-        openKaart?.onLowMemory()
+        ThumbHash.clear()
     }
-
-    companion object { const val CACHE_MB = 56 }
 }
 
-/** Een scherm met zijn eigen staat; blijft bewaard zolang het op de stapel staat (terug = zelfde plek, zelfde focus). */
-sealed class Scherm {
-    class Tijdlijn(
-        val titel: String, val sub: String?, filter: Filter, nieuwsteEerst: Boolean, val metHerinneringen: Boolean, scope: CoroutineScope,
-    ) : Scherm() { val staat = TijdlijnStaat(filter, nieuwsteEerst, scope) }
-    class Albums(scope: CoroutineScope) : Scherm() { val staat = AlbumsStaat(scope) }
-    class Verkennen(scope: CoroutineScope) : Scherm() { val staat = VerkenStaat(scope) }
-    class Zoeken(scope: CoroutineScope) : Scherm() { val staat = ZoekStaat(scope) }
-    class Herinneringen(scope: CoroutineScope) : Scherm() { val staat = HerinneringStaat(scope) }
-    class Kaart(scope: CoroutineScope) : Scherm() { val staat = KaartStaat(scope) }
-    /** alle foto's van een kaartcluster (lang OK op de kaart) */
-    class KaartFotos(val titel: String, ids: List<String>, scope: CoroutineScope) : Scherm() { val staat = KaartFotosStaat(ids, scope) }
-    /** alle personen (vanuit Zoeken), met zoekveld en sortering */
-    class Personen(val lijst: List<Persoon>) : Scherm() { val staat = PersonenStaat(lijst) }
-    /** een map uit de mappenboom (null = het startpunt van de boom, zodra die geladen is) */
-    class Mappen(boom: MappenBoom, knoop: MapKnoop?, scope: CoroutineScope) : Scherm() { val staat = MapStaat(boom, knoop, scope) }
-    data object Instellingen : Scherm()
-    class Lijst(val titel: String, val sub: String?, val perDag: Boolean, scope: CoroutineScope, laad: suspend (Int) -> Pagina) : Scherm() {
-        val res = Resultaten(scope).also { it.start(laad) }
+/** Screens pushed onto the navigation stack. */
+sealed class Screen {
+    class Timeline(
+        val title: String,
+        val sub: String?,
+        val filter: Filter,
+        val withMemories: Boolean,
+        startNewest: Boolean,
+        scope: CoroutineScope,
+    ) : Screen() {
+        val state = TimelineState(filter, startNewest, scope)
+    }
+    class Albums(scope: CoroutineScope) : Screen() { val state = AlbumsState(scope) }
+    class Explore(scope: CoroutineScope) : Screen() { val state = ExploreState(scope) }
+    class Search(scope: CoroutineScope) : Screen() { val state = SearchState(scope) }
+    class Memories(scope: CoroutineScope) : Screen() { val state = MemoriesState(scope) }
+    class Map(scope: CoroutineScope) : Screen() { val state = MapState(scope) }
+    class MapPhotos(val title: String, ids: List<String>, scope: CoroutineScope) : Screen() {
+        val state = MapPhotosState(ids, scope)
+    }
+    class People(val people: List<Person>) : Screen() { val state = PeopleState(people) }
+    class Folders(tree: FolderTree, node: FolderNode?, scope: CoroutineScope) : Screen() {
+        val state = FolderState(tree, node, scope)
+    }
+    data object SettingsScreen : Screen()
+    class AssetList(
+        val title: String,
+        val sub: String?,
+        val byDay: Boolean = true,
+        scope: CoroutineScope,
+        load: suspend (Int) -> Page,
+    ) : Screen() {
+        val res = SearchResults(scope).apply { start(load) }
     }
 }
 
 class Nav(
     val scope: CoroutineScope,
-    val open: (Scherm) -> Unit,
-    private val toon: (bron: BeeldBron, index: Int, titel: String?, diashow: Boolean, raster: RasterStaat?, naTerug: (() -> Unit)?) -> Unit,
+    val open: (Screen) -> Unit,
+    val view: (ImageSource, Int, String?, Boolean, GridState?, (() -> Unit)?) -> Unit,
 ) {
-    /** Viewer openen; [raster] krijgt de focus terug, of [naTerug] wordt aangeroepen bij het sluiten (kaart). */
-    fun bekijk(bron: BeeldBron, index: Int, titel: String?, diashow: Boolean, raster: RasterStaat?, naTerug: (() -> Unit)? = null) =
-        toon(bron, index, titel, diashow, raster, naTerug)
+    fun view(source: ImageSource, start: Int, title: String?, slideshow: Boolean, grid: GridState?) =
+        view(source, start, title, slideshow, grid, null)
 }
 
-/** Signalen van toetsen die de activity afvangt (Terug lang ingedrukt). */
-object Toetsen {
-    var langeTerug by androidx.compose.runtime.mutableIntStateOf(0)
-    /** geopend via het tandwieltje van de screensaver (alias ScreensaverInstellingen): naar die groep scrollen */
-    @Volatile var naarScreensaver = false
-    /** de wereldkaart gebruikt OK ingedrukt houden (lang OK); overal elders is een OK-herhaling nooit een nieuwe actie */
-    @Volatile var okHerhaling = false
-    /** een scherm dat door OK (lang) geopend is, krijgt de rest van diezelfde druk (herhalingen + key-up) niet meer */
-    @Volatile var okGeslikt = false
+/** Key behavior overrides coordinated between screens and [MainActivity.dispatchKeyEvent]. */
+object Keys {
+    /** Long Back press starts the screensaver directly. */
+    var longBack = false
+    var toScreensaver = false
+    /** Map screen handles key repeats on OK itself (long OK = photo grid). */
+    var okRepeat = false
+    var okConsumed = false
 }
 
-enum class Sectie(@StringRes val label: Int, val icoon: ImageVector) {
-    FOTOS(R.string.sectie_fotos, Icons.Filled.Photo),
-    HERINNERINGEN(R.string.sectie_herinneringen, Icons.Filled.AutoAwesome),
-    ZOEKEN(R.string.sectie_zoeken, Icons.Filled.Search),
-    VERKENNEN(R.string.sectie_verkennen, Icons.Filled.Explore),
-    KAART(R.string.sectie_kaart, Icons.Filled.Map),
-    ALBUMS(R.string.sectie_albums, Icons.Filled.PhotoLibrary),
-    MAPPEN(R.string.sectie_mappen, Icons.Filled.Folder),
-    FAVORIETEN(R.string.sectie_favorieten, Icons.Filled.Favorite),
-    INSTELLINGEN(R.string.sectie_instellingen, Icons.Filled.Settings),
+enum class Section(@StringRes val label: Int, val icon: ImageVector) {
+    PHOTOS(R.string.section_photos, Icons.Filled.Photo),
+    MEMORIES(R.string.section_memories, Icons.Filled.AutoAwesome),
+    SEARCH(R.string.section_search, Icons.Filled.Search),
+    EXPLORE(R.string.section_explore, Icons.Filled.Explore),
+    MAP(R.string.section_map, Icons.Filled.Map),
+    ALBUMS(R.string.section_albums, Icons.Filled.PhotoLibrary),
+    FOLDERS(R.string.section_folders, Icons.Filled.Folder),
+    FAVORITES(R.string.section_favorites, Icons.Filled.Favorite),
+    SETTINGS(R.string.section_settings, Icons.Filled.Settings),
+}
+
+/** Active overlays (diagnostics, etc.) so Back closes them before navigating. */
+object Overlays {
+    var diagnostics by mutableStateOf(false)
+    var openCount by mutableIntStateOf(0)
+        private set
+
+    @Composable
+    fun Open() {
+        DisposableEffect(Unit) { openCount++; onDispose { openCount-- } }
+    }
 }
 
 class MainActivity : ComponentActivity() {
-    /** OK/Enter pas doorlaten na een eigen KeyDown: een losse key-up/repeat van een launcher-tegel mag hier niets "klikken" */
-    private var okGezien = false
-    private var start = 0L
+    private var intentState by mutableStateOf<Intent?>(null)
+    private var backDownAt = 0L
 
-    /** De gekozen taal, los van de systeemtaal (zie Taal). */
-    override fun attachBaseContext(base: android.content.Context) = super.attachBaseContext(Taal.wrap(base))
+    override fun attachBaseContext(base: Context) = super.attachBaseContext(Language.wrap(base))
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        start = android.os.SystemClock.uptimeMillis()
-        // een eigen launcher kan het profiel meegeven ("kijker"); per profiel kan dan een eigen Immich-account gelden
-        Immich.kiesAccount(this, intent.getStringExtra("kijker"))
-        // Test-extra's alleen bij een verse start vanaf de shell (`am start`, referrer com.android.shell). Bij een herstart
-        // van de taak (proces opgeruimd door geheugennood, daarna de tegel in de launcher) geeft Android het óórspronkelijke
-        // intent van de taak opnieuw mee (savedInstanceState != null) en zou `--ei test_index` blijven plakken: de app
-        // opende dan "uit het niets" in de viewer.
-        val vanShell = referrer?.host == "com.android.shell"
-        val test = savedInstanceState == null && vanShell
-        Log.i("Fotos", "start: referrer=$referrer hersteld=${savedInstanceState != null} test=$test extras=${intent.extras?.keySet()?.joinToString()}")
-        // test: `am start … --ei test_index 91` opent de viewer meteen op die foto in de tijdlijn
-        val testIndex = if (test) intent.getIntExtra("test_index", -1) else -1
-        // test: `--es sectie KAART` opent meteen die sectie; anders het ingestelde startscherm
-        // via het tandwieltje bij de screensaver in de systeeminstellingen (alias .ScreensaverInstellingen, zie dream.xml)
-        val vanScreensaver = intent.component?.className?.endsWith(".ScreensaverInstellingen") == true
-        if (vanScreensaver) Toetsen.naarScreensaver = true
-        val startSectie = intent.getStringExtra("sectie")?.takeIf { test }?.let { s -> Sectie.entries.firstOrNull { it.name == s } }
-            ?: Taal.herstartSectie?.also { Taal.herstartSectie = null } // na een taalwissel terug in Instellingen
-            ?: Sectie.INSTELLINGEN.takeIf { vanScreensaver }
-            ?: Instellingen.start
-        // test: `--ez instel_test true` toont het instelscherm zonder de bestaande koppeling te wissen
-        val instelTest = test && intent.getBooleanExtra("instel_test", false)
-        // test: `--ez taal_test true` toont het taalkeuzescherm van de eerste start (de koppeling blijft staan)
-        val taalTest = test && intent.getBooleanExtra("taal_test", false)
-        if (test) {
-            kaartTexture = intent.getBooleanExtra("kaart_texture", false); kaartLod = intent.getIntExtra("kaart_lod", kaartLod)
-            kaartFps = intent.getIntExtra("kaart_fps", 0); kaartAlles = intent.getBooleanExtra("kaart_alles", false)
-            kaartRes = intent.getIntExtra("kaart_res", kaartRes); kaartVlucht = intent.getIntExtra("kaart_vlucht", kaartVlucht)
-            scrolBalkUit = intent.getBooleanExtra("geen_balk", false)
-            videoZonderPlaceholder = intent.getBooleanExtra("video_zonder_placeholder", false)
-            kaartCache = intent.getBooleanExtra("kaart_cache", kaartCache); kaartPrefetch = intent.getIntExtra("kaart_prefetch", -1)
+        Immich.selectAccount(this, null)
+        intentState = intent
+        applyTestExtras(intent)
+        setContent {
+            PhotosTheme {
+                PhotosApp(intent = intentState ?: intent, onExit = { finish() })
+            }
         }
-        setContent { FotosThema { FotosApp(finish = ::finish, herstart = ::recreate, testIndex = testIndex, startSectie = startSectie, instelTest = instelTest, taalTest = taalTest) } }
     }
 
-    /** Terug lang ingedrukt = menu (lade); de key-up erna mag dan geen gewone Terug meer zijn */
-    private var terugLang = false
-
-    override fun dispatchKeyEvent(e: KeyEvent): Boolean {
-        // Terug lang ingedrukt: overal het menu. KEYCODE_MENU onderscheppen sommige boxen (NVIDIA Shield) op systeemniveau,
-        // daarom deze toets; MENU blijft ernaast voor afstandsbedieningen die hem wél doorgeven (zie FotosApp).
-        if (e.keyCode == KeyEvent.KEYCODE_BACK) {
-            if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount > 0) {
-                if (!terugLang) { terugLang = true; Toetsen.langeTerug++ }
-                return true
-            }
-            if (e.action == KeyEvent.ACTION_UP && terugLang) { terugLang = false; return true }
-        }
-        if (e.keyCode == KeyEvent.KEYCODE_DPAD_CENTER || e.keyCode == KeyEvent.KEYCODE_ENTER) {
-            // eerste halve seconde na het starten helemaal geen OK (ook geen verse: dubbele druk op de tegel)
-            if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount == 0 && android.os.SystemClock.uptimeMillis() - start > 500) okGezien = true
-            if (Toetsen.okGeslikt) {
-                Log.i("Fotos", "OK ingeslikt (actie ${e.action}, herhaling ${e.repeatCount})")
-                if (e.action == KeyEvent.ACTION_UP) Toetsen.okGeslikt = false
-                return true
-            }
-            if (!okGezien) { Log.i("Fotos", "OK genegeerd (actie ${e.action}, herhaling ${e.repeatCount})"); return true }
-            // ingedrukt houden = key-repeat: geen tweede, derde, ... actie (viewer wisselde zo razendsnel de diashow)
-            if (e.action == KeyEvent.ACTION_DOWN && e.repeatCount > 0 && !Toetsen.okHerhaling) return true
-        }
-        return super.dispatchKeyEvent(e)
-    }
-
-    // singleTask: draait hij al en komt er een ander profiel binnen met een eigen account, dan opnieuw opbouwen
-    override fun onNewIntent(intent: android.content.Intent) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        okGezien = false
-        val oud = Immich.sleutel
-        Immich.kiesAccount(this, intent.getStringExtra("kijker"))
-        if (Immich.sleutel != oud) recreate()
+        setIntent(intent)
+        intentState = intent
+        applyTestExtras(intent)
+    }
+
+    private fun applyTestExtras(intent: Intent) {
+        if (intent.hasExtra("kaart_texture")) mapTexture = intent.getBooleanExtra("kaart_texture", false)
+        if (intent.hasExtra("kaart_lod")) mapLod = intent.getIntExtra("kaart_lod", -1)
+        if (intent.hasExtra("kaart_fps")) mapFps = intent.getIntExtra("kaart_fps", 0)
+        if (intent.hasExtra("kaart_alles")) mapAllLayers = intent.getBooleanExtra("kaart_alles", false)
+        if (intent.hasExtra("kaart_res")) mapRes = intent.getIntExtra("kaart_res", 0)
+        if (intent.hasExtra("kaart_vlucht")) mapFlight = intent.getIntExtra("kaart_vlucht", -2)
+        if (intent.hasExtra("kaart_cache")) mapCache = intent.getBooleanExtra("kaart_cache", false)
+        if (intent.hasExtra("kaart_prefetch")) mapPrefetch = intent.getIntExtra("kaart_prefetch", -1)
+        if (intent.hasExtra("video_zonder_placeholder")) videoWithoutPlaceholder = intent.getBooleanExtra("video_zonder_placeholder", false)
+    }
+
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val code = event.keyCode
+        // Swallow remainder of a long-OK press once MapScreen handled it
+        if (Keys.okConsumed && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+            if (event.action == KeyEvent.ACTION_UP) Keys.okConsumed = false
+            return true
+        }
+        // Long Back -> launch PreviewActivity (screensaver)
+        if (code == KeyEvent.KEYCODE_BACK && Keys.longBack) {
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                if (event.repeatCount == 0) { backDownAt = SystemClock.uptimeMillis(); Keys.toScreensaver = false }
+                else if (!Keys.toScreensaver && SystemClock.uptimeMillis() - backDownAt >= 600) {
+                    Keys.toScreensaver = true
+                    startActivity(Intent(this, PreviewActivity::class.java))
+                    return true
+                }
+            } else if (event.action == KeyEvent.ACTION_UP && Keys.toScreensaver) {
+                Keys.toScreensaver = false
+                return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
     }
 }
 
 @Composable
-private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = -1, startSectie: Sectie = Sectie.FOTOS, instelTest: Boolean = false, taalTest: Boolean = false) {
-    // Eerste start: eerst de taal kiezen (voorgeselecteerd op de systeemtaal); daarna opnieuw opbouwen in die taal
-    var taalKiezen by remember { mutableStateOf(taalTest || !Taal.gekozen) }
-    if (taalKiezen) { TaalScherm(finish = finish) { taalKiezen = false; herstart() }; return }
-    // Geen account (eerste start, of na Ontkoppelen) of "Opnieuw koppelen": instelscherm met QR-code. Na een geslaagde
-    // koppeling de activity opnieuw opbouwen: alle schermen hangen aan het oude adres/account.
-    val stand = Immich.stand
-    var instellen by remember { mutableStateOf(instelTest) }
-    val gekoppeld = Immich.sleutel.isNotBlank() && stand >= 0
-    if (!gekoppeld || instellen) {
-        // via Instellingen → Opnieuw koppelen is het nooit een test (sleutelnaam zonder "(test)")
-        InstelScherm(test = instelTest && !instellen, terug = if (gekoppeld) ({ instellen = false }) else null, klaar = { instellen = false; herstart() }, finish = finish)
+fun PhotosApp(intent: Intent, onExit: () -> Unit) {
+    val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var languageChosen by remember { mutableStateOf(Language.chosen) }
+    var connected by remember { mutableStateOf(Immich.server.isNotBlank() && Immich.key.isNotBlank()) }
+    var testPairing by remember { mutableStateOf(false) }
+
+    // Language picker before anything else on first launch
+    if (!languageChosen) {
+        LanguageScreen(
+            finish = onExit,
+            chosen = {
+                languageChosen = true
+                (ctx as? MainActivity)?.recreate()
+            },
+        )
         return
     }
-    // Eén scope voor alle schermstaten, met een CoroutineExceptionHandler: een onverwachte fout in een coroutine (de
-    // meeste zijn al met runCatching afgedekt) sluit dan niet de hele app, maar komt in de diagnose terecht.
-    val scope = remember {
-        CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Main.immediate + kotlinx.coroutines.CoroutineExceptionHandler { _, e ->
-            Log.e("Fotos", "coroutine", e); Diagnose.noteer("coroutine", e)
-        })
+
+    // Pairing screen when not connected yet (or testing pairing)
+    if (!connected || testPairing) {
+        PairingScreen(
+            test = testPairing,
+            back = { testPairing = false },
+            done = { connected = true; testPairing = false },
+            finish = onExit,
+        )
+        return
     }
-    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { scope.cancel() } }
-    androidx.compose.runtime.LaunchedEffect(Unit) { Immich.warmZoeken() }
-    val appCtx = androidx.compose.ui.platform.LocalContext.current.applicationContext
-    // rechten van de sleutel controleren; een nieuw ontbrekend recht één keer melden (overzicht met Opnieuw koppelen)
-    androidx.compose.runtime.LaunchedEffect(Immich.stand) { kotlinx.coroutines.delay(1500); Rechten.controleer(); Rechten.meldNieuw(appCtx) }
-    androidx.compose.runtime.LaunchedEffect(Rechten.reconnectRequested) { if (Rechten.reconnectRequested) { Rechten.reconnectRequested = false; instellen = true } }
-    val wortels = remember { HashMap<Sectie, Scherm>() }
-    var sectie by remember { mutableStateOf(startSectie) }
-    val stapel = remember { mutableStateListOf<Scherm>() }
-    var kijker by remember { mutableStateOf<Triple<KijkerStaat, RasterStaat?, (() -> Unit)?>?>(null) }
-    /** overzicht van de sneltoetsen (INFO-toets of via Instellingen) */
-    var toetsen by remember { mutableStateOf(false) }
-    val ctx = androidx.compose.ui.platform.LocalContext.current
-    val naamApp = stringResource(Instellingen.uiterlijk.label)
-    // instellingen die een bestaande tijdlijn raken (volgorde, partner-foto's): toepassen zonder herstart
-    val volgorde = Instellingen.nieuwsteEerst; val partners = Instellingen.partners
-    androidx.compose.runtime.LaunchedEffect(volgorde, partners) {
-        for (s in listOf(Sectie.FOTOS, Sectie.FAVORIETEN)) (wortels[s] as? Scherm.Tijdlijn)?.staat?.pasInstellingenToe()
+
+    // Main app state: cached sections + navigation stack + active viewer
+    val stack = remember { mutableStateListOf<Screen>() }
+    val sectionCache = remember { HashMap<Section, Screen>() }
+    var activeSection by remember { mutableStateOf(Language.restartSection ?: Settings.start) }
+    var viewer by remember { mutableStateOf<Pair<ViewerState, (() -> Unit)?>?>(null) }
+    var returnGrid by remember { mutableStateOf<GridState?>(null) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+
+    fun screenFor(s: Section): Screen = sectionCache.getOrPut(s) {
+        when (s) {
+            Section.PHOTOS -> Screen.Timeline(ctx.getString(Settings.appearance.label), null, Filter(), true, Settings.newestFirst, scope)
+            Section.MEMORIES -> Screen.Memories(scope)
+            Section.SEARCH -> Screen.Search(scope)
+            Section.EXPLORE -> Screen.Explore(scope)
+            Section.MAP -> Screen.Map(scope)
+            Section.ALBUMS -> Screen.Albums(scope)
+            Section.FOLDERS -> Screen.Folders(FolderTree(scope), null, scope)
+            Section.FAVORITES -> Screen.Timeline(ctx.getString(R.string.section_favorites), null, Filter(favorites = true), false, Settings.newestFirst, scope)
+            Section.SETTINGS -> Screen.SettingsScreen
+        }
+    }
+
+    // Initialize first screen
+    LaunchedEffect(Unit) {
+        if (stack.isEmpty()) {
+            Language.restartSection = null
+            stack.add(screenFor(activeSection))
+        }
+        Permissions.check()
+        Permissions.notifyNew(ctx)
+    }
+
+    // Handle deep-link intent extras (e.g. from launcher shortcuts or test extras)
+    LaunchedEffect(intent) {
+        val sec = intent.getStringExtra("sectie")?.let { name -> Section.entries.firstOrNull { it.name.equals(name, true) } }
+        if (sec != null) {
+            activeSection = sec
+            stack.clear()
+            stack.add(screenFor(sec))
+        }
+    }
+
+    // Apply timeline settings when returning from Settings
+    LaunchedEffect(stack.lastOrNull()) {
+        val cur = stack.lastOrNull()
+        if (cur is Screen.Timeline) cur.state.applySettings()
     }
 
     val nav = remember {
         Nav(
             scope = scope,
-            open = { stapel.add(it) },
-            toon = { bron, i, titel, dia, raster, naTerug -> if (i >= 0) kijker = Triple(KijkerStaat(bron, i, titel, dia), raster, naTerug) },
+            open = { s -> stack.add(s) },
+            view = { source, start, title, slideshow, grid, onClose ->
+                returnGrid = grid
+                viewer = ViewerState(source, start, title, slideshow) to onClose
+            },
         )
     }
-    fun wortel(s: Sectie): Scherm = wortels.getOrPut(s) {
-        when (s) {
-            Sectie.FOTOS -> Scherm.Tijdlijn(naamApp, null, Filter(), Instellingen.nieuwsteEerst, true, scope)
-            Sectie.HERINNERINGEN -> Scherm.Herinneringen(scope)
-            Sectie.ZOEKEN -> Scherm.Zoeken(scope)
-            Sectie.VERKENNEN -> Scherm.Verkennen(scope)
-            Sectie.KAART -> Scherm.Kaart(scope)
-            Sectie.ALBUMS -> Scherm.Albums(scope)
-            Sectie.MAPPEN -> Scherm.Mappen(MappenBoom(scope), null, scope)
-            Sectie.FAVORIETEN -> Scherm.Tijdlijn(ctx.getString(R.string.sectie_favorieten), null, Filter(favorieten = true), Instellingen.nieuwsteEerst, false, scope)
-            Sectie.INSTELLINGEN -> Scherm.Instellingen
+
+    // Long Back launches screensaver when on a top-level screen without viewer
+    val onTop = stack.size <= 1 && viewer == null && !Overlays.diagnostics
+    DisposableEffect(onTop) { Keys.longBack = onTop; onDispose { Keys.longBack = false } }
+
+    // Refresh permissions status when returning from system settings
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val obs = LifecycleEventObserver { _, e ->
+            if (e == Lifecycle.Event.ON_RESUME) scope.launch { Permissions.check() }
         }
-    }
-    val scherm = stapel.lastOrNull() ?: wortel(sectie)
-    if (testIndex >= 0) androidx.compose.runtime.LaunchedEffect(Unit) {
-        val s = (wortel(Sectie.FOTOS) as Scherm.Tijdlijn).staat
-        while (s.aantal == 0) kotlinx.coroutines.delay(100)
-        kotlinx.coroutines.delay(600)
-        nav.bekijk(s, testIndex, naamApp, false, s.raster)
+        lifecycle.addObserver(obs)
+        onDispose { lifecycle.removeObserver(obs) }
     }
 
-    // Terug: toetsenoverzicht dicht → sub-scherm sluiten → naar het startscherm → in Foto's naar boven → app uit (terug naar de launcher)
-    BackHandler(enabled = kijker == null) {
-        val t = (scherm as? Scherm.Tijdlijn)?.staat?.raster?.lijst
+    // Back handling: close overlays -> close viewer -> pop stack -> open drawer -> exit
+    BackHandler(enabled = Overlays.diagnostics || viewer != null || stack.size > 1 || drawerState.currentValue == DrawerValue.Open) {
         when {
-            toetsen -> toetsen = false
-            stapel.isNotEmpty() -> stapel.removeAt(stapel.lastIndex)
-            sectie != startSectie -> sectie = startSectie
-            t != null && t.firstVisibleItemIndex > 0 -> scope.launch {
-                t.scrollToItem(0)
-                (scherm as Scherm.Tijdlijn).staat.let { s -> s.maanden.firstOrNull()?.let { m -> s.geladen[m.sleutel]?.firstOrNull()?.let { s.raster.focusDoel = it.id } } }
+            Overlays.diagnostics -> Overlays.diagnostics = false
+            viewer != null -> {
+                val (vs, onClose) = viewer!!
+                val last = vs.source.at(vs.index)
+                viewer = null
+                last?.let { a -> returnGrid?.focusTarget = a.id }
+                returnGrid = null
+                onClose?.invoke()
             }
-            else -> finish()
+            stack.size > 1 -> stack.removeAt(stack.lastIndex)
+            drawerState.currentValue == DrawerValue.Open -> scope.launch { drawerState.setValue(DrawerValue.Closed) }
         }
     }
 
-    val ladeFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    /** inhoud (rechts van de lade): na het sluiten van een popup de focus hierheen, anders pakt Android de lade */
-    val inhoudFocus = remember { androidx.compose.ui.focus.FocusRequester() }
-    val inhoudHeeftFocus = remember { androidx.compose.runtime.mutableStateOf(false) }
-    // menu openen = focus op het lade-item van de huidige sectie (de lade van tv-material opent op focus)
-    fun openLade() { toetsen = false; runCatching { ladeFocus.requestFocus() }.onFailure { Log.w("Fotos", "lade", it) } }
-    val langeTerug = Toetsen.langeTerug
-    androidx.compose.runtime.LaunchedEffect(langeTerug) { if (langeTerug > 0 && kijker == null) openLade() }
-    Box(
-        Modifier.fillMaxSize().background(Kleur.achtergrond).onPreviewKeyEvent { e ->
-            if (e.type != androidx.compose.ui.input.key.KeyEventType.KeyDown || kijker != null) return@onPreviewKeyEvent false
-            when (e.key.nativeKeyCode) {
-                // MENU (≡ op sommige afstandsbedieningen): overal de lade openen, met de focus op de huidige sectie
-                KeyEvent.KEYCODE_MENU -> { openLade(); true }
-                // INFO: overzicht van de sneltoetsen (in de viewer is INFO het infopaneel)
-                KeyEvent.KEYCODE_INFO -> { toetsen = !toetsen; true }
-                else -> false
-            }
-        },
-    ) {
-        val lade = rememberDrawerState(DrawerValue.Closed)
-        val ladeInstap = remember { androidx.compose.runtime.mutableIntStateOf(0) }
-        // een frame later: tv-material zet zelf nog een focus bij het binnengaan
-        androidx.compose.runtime.LaunchedEffect(ladeInstap.intValue) {
-            if (ladeInstap.intValue == 0) return@LaunchedEffect
-            androidx.compose.runtime.withFrameNanos { }
-            val ok = runCatching { ladeFocus.requestFocus() }.getOrDefault(false)
-            Log.i("Fotos", "lade: focus naar huidige sectie ($ok)")
+    // Drawer focus items (to focus language after restart)
+    val drawerFocus = remember { Section.entries.associateWith { FocusRequester() } }
+    LaunchedEffect(drawerState.currentValue) {
+        if (drawerState.currentValue == DrawerValue.Open) {
+            delay(50)
+            runCatching { drawerFocus[activeSection]?.requestFocus() }
         }
-        val ladeBinnen = remember { androidx.compose.runtime.mutableStateOf(false) }
-        val ladeFocusNu = remember { androidx.compose.runtime.mutableStateOf(false) }
-        // Omleiden alleen bij het BINNENGAAN. Bij een focusverplaatsing binnen de lade kan hasFocus kort false->true
-        // knipperen; daarom telt "buiten" pas na 300 ms zonder focus (anders sprong ▼ steeds terug naar de huidige sectie).
-        androidx.compose.runtime.LaunchedEffect(ladeFocusNu.value) {
-            if (ladeFocusNu.value) {
-                if (!ladeBinnen.value) { ladeBinnen.value = true; ladeInstap.intValue++ }
-            } else {
-                kotlinx.coroutines.delay(300)
-                ladeBinnen.value = false
-            }
-        }
-        // Schermwissel (ook viewer open/dicht): even heeft niets focus en zou Android die aan het eerste focusbare
-        // element geven = de lade (klapt kort open). Daarom is de lade tijdens de wissel niet focusbaar; het nieuwe
-        // scherm pakt zijn focus zelf. De eerste compositie met een nieuw scherm telt al mee (`nieuw`), vóór de effect.
-        // popups (overlays) also count as a transition: when they close, focus returns to the content
-        val popup = Lagen.open > 0
-        val wisselSleutel = Triple(scherm, kijker != null, popup)
-        val laatsteSleutel = remember { androidx.compose.runtime.mutableStateOf(wisselSleutel) }
-        val wisselt = remember { androidx.compose.runtime.mutableStateOf(false) }
-        val ladeDicht = wisselSleutel != laatsteSleutel.value || wisselt.value
-        androidx.compose.runtime.LaunchedEffect(wisselSleutel) {
-            if (wisselSleutel == laatsteSleutel.value) return@LaunchedEffect
-            wisselt.value = true
-            val popupDicht = laatsteSleutel.value.third && !popup && laatsteSleutel.value.first == scherm
-            laatsteSleutel.value = wisselSleutel
-            // de laag zelf kan de focus al teruggezet hebben (bijv. op de regel die hem opende); alleen als niets in de inhoud focus heeft
-            if (popupDicht) { kotlinx.coroutines.delay(48); if (!inhoudHeeftFocus.value) runCatching { inhoudFocus.requestFocus() } }
-            kotlinx.coroutines.delay(800)
-            wisselt.value = false
-        }
+    }
+
+    Box(Modifier.fillMaxSize().background(AppColors.background)) {
         ModalNavigationDrawer(
-            drawerState = lade,
-            modifier = Modifier.graphicsLayer { alpha = if (kijker != null) 0f else 1f },
-            drawerContent = { waarde ->
+            drawerState = drawerState,
+            drawerContent = {
                 Column(
-                    Modifier.fillMaxHeight().background(if (waarde == DrawerValue.Open) Kleur.vlak else Kleur.achtergrond)
-                        .focusProperties { canFocus = !ladeDicht }
-                        // binnenkomen (◀ aan de rand, lang Terug) = altijd focus op het item van de huidige sectie, niet op wat het
-                        // dichtstbij ligt of het laatst gefocust was; daarna loopt de focus gewoon item voor item
-                        .onFocusChanged {
-                            ladeFocusNu.value = it.hasFocus
-                            if (it.hasFocus) Log.i("Fotos", "lade focus (wisselt=$ladeDicht)")
-                        }
-                        .padding(12.dp).selectableGroup(),
+                    Modifier
+                        .background(Color(0xF2121216))
+                        .padding(12.dp)
+                        .width(220.dp),
                 ) {
-                    Spacer(Modifier.height(24.dp))
-                    for (s in Sectie.entries) {
-                        if (s == Sectie.INSTELLINGEN) Spacer(Modifier.weight(1f))
+                    val drawerOpen = drawerState.currentValue == DrawerValue.Open
+                    Section.entries.forEach { sec ->
+                        val label = if (sec == Section.PHOTOS) stringResource(Settings.appearance.label) else stringResource(sec.label)
                         NavigationDrawerItem(
-                            selected = sectie == s && stapel.isEmpty(),
-                            modifier = (if (sectie == s) Modifier.focusRequester(ladeFocus) else Modifier)
-                                .onFocusChanged { if (it.isFocused && !ladeBinnen.value) Log.i("Fotos", "lade: binnen op ${s.name} (huidig ${sectie.name})") },
+                            selected = activeSection == sec && stack.size == 1,
                             onClick = {
-                                stapel.clear(); sectie = s
-                                lade.setValue(DrawerValue.Closed)
+                                activeSection = sec
+                                stack.clear()
+                                stack.add(screenFor(sec))
+                                scope.launch { drawerState.setValue(DrawerValue.Closed) }
                             },
-                            leadingContent = { Icon(s.icoon, null) },
+                            leadingContent = { Icon(sec.icon, null, Modifier.size(20.dp)) },
+                            modifier = Modifier.focusRequester(drawerFocus[sec]!!),
                             colors = NavigationDrawerItemDefaults.colors(
-                                selectedContainerColor = Kleur.primair.copy(alpha = 0.18f), selectedContentColor = Kleur.primair,
-                                focusedContainerColor = Kleur.primair, focusedContentColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedContainerColor = AppColors.primary.copy(alpha = 0.22f),
+                                focusedContainerColor = AppColors.primary,
+                                focusedContentColor = AppColors.onPrimary,
                             ),
-                        ) { Text(if (s == Sectie.FOTOS) naamApp else stringResource(s.label), color = LocalContentColor.current) }
+                        ) {
+                            if (drawerOpen) Text(label, maxLines = 1)
+                        }
                     }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.weight(1f))
                 }
             },
         ) {
-            // Binnenkomen zonder flits: verlaat de focus het scherm naar links (◀ aan de rand), dan gaat hij meteen naar het
-            // lade-item van de huidige sectie. Android koos anders eerst het geometrisch dichtstbijzijnde item (bv.
-            // Verkennen) en pas een frame later corrigeerde ladeInstap dat: een zichtbare flits. (canFocus per item of
-            // focusProperties.enter op de lade werken niet: tv-material zet die zelf.)
-            @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
-            Box(
-                Modifier.fillMaxSize().padding(start = 80.dp)
-                    .focusRequester(inhoudFocus)
-                    .onFocusChanged { inhoudHeeftFocus.value = it.hasFocus }
-                    .focusProperties {
-                        exit = { richting ->
-                            if (richting == androidx.compose.ui.focus.FocusDirection.Left && !ladeDicht) ladeFocus
-                            else androidx.compose.ui.focus.FocusRequester.Default
-                        }
-                    }
-                    .focusGroup(),
-            ) {
-                key(scherm) {
-                    when (scherm) {
-                        is Scherm.Tijdlijn -> TijdlijnScherm(scherm, nav)
-                        is Scherm.Albums -> AlbumsScherm(scherm.staat, nav)
-                        is Scherm.Verkennen -> VerkenScherm(scherm.staat, nav)
-                        is Scherm.Zoeken -> ZoekScherm(scherm.staat, nav)
-                        is Scherm.Herinneringen -> HerinneringenScherm(scherm.staat, nav)
-                        is Scherm.Kaart -> KaartScherm(scherm.staat, nav)
-                        is Scherm.KaartFotos -> KaartFotosScherm(scherm, nav)
-                        is Scherm.Personen -> PersonenScherm(scherm.staat, nav)
-                        is Scherm.Mappen -> MappenScherm(scherm, nav)
-                        is Scherm.Lijst -> LijstScherm(scherm, nav)
-                        is Scherm.Instellingen -> InstellingenScherm(opnieuwKoppelen = { instellen = true }, ontkoppeld = { sectie = Sectie.FOTOS })
-                    }
-                }
+            when (val cur = stack.lastOrNull()) {
+                is Screen.Timeline -> TimelineScreen(cur, nav)
+                is Screen.Albums -> AlbumsScreen(cur.state, nav)
+                is Screen.Explore -> ExploreScreen(cur.state, nav)
+                is Screen.Search -> SearchScreen(cur.state, nav)
+                is Screen.Memories -> MemoriesScreen(cur.state, nav)
+                is Screen.Map -> MapScreen(cur.state, nav)
+                is Screen.MapPhotos -> MapPhotosScreen(cur, nav)
+                is Screen.People -> PeopleScreen(cur.state, nav)
+                is Screen.Folders -> FoldersScreen(cur, nav)
+                is Screen.SettingsScreen -> SettingsScreen(
+                    reconnect = { testPairing = true },
+                    disconnected = {
+                        sectionCache.clear()
+                        stack.clear()
+                        connected = false
+                    },
+                )
+                is Screen.AssetList -> AssetListScreen(cur, nav)
+                null -> {}
             }
         }
-        if (toetsen && kijker == null) ToetsenOverzicht { toetsen = false }
-        kijker?.let { (k, raster, naTerug) ->
-            Kijker(
-                k,
-                // "Toon op kaart" (OK in het infopaneel): viewer dicht, naar de kaartsectie, inzoomen op die plek
-                opKaart = { a ->
-                    kijker = null; stapel.clear(); sectie = Sectie.KAART
-                    (wortel(Sectie.KAART) as Scherm.Kaart).staat.toon(a)
-                },
-            ) { laatste ->
-                kijker = null
-                if (raster != null && laatste != null) raster.terugNaar = laatste.id
-                naTerug?.invoke()
+
+        // Viewer overlay
+        val activeViewer = viewer
+        AnimatedVisibility(activeViewer != null, enter = fadeIn(), exit = fadeOut()) {
+            if (activeViewer != null) {
+                val (vs, onClose) = activeViewer
+                Viewer(
+                    state = vs,
+                    onMap = { asset ->
+                        viewer = null
+                        returnGrid = null
+                        onClose?.invoke()
+                        activeSection = Section.MAP
+                        val mapScreen = screenFor(Section.MAP) as Screen.Map
+                        stack.clear()
+                        stack.add(mapScreen)
+                        mapScreen.state.show(asset)
+                    },
+                    close = { last ->
+                        viewer = null
+                        last?.let { a -> returnGrid?.focusTarget = a.id }
+                        returnGrid = null
+                        onClose?.invoke()
+                    },
+                )
             }
         }
-    }
-}
 
-/**
- * Telt de open lagen (keuzelijsten, uitleg, popups). Sluit er een, dan heeft even niets focus en zou Android die aan
- * de lade geven (klapt open); MainActivity houdt de lade dan even dicht en zet de focus terug op de inhoud.
- */
-object Lagen {
-    var open by androidx.compose.runtime.mutableIntStateOf(0)
-        private set
-
-    /** Aanroepen bovenaan een laag-composable: telt mee zolang de laag in beeld is. */
-    @Composable
-    fun Open() {
-        androidx.compose.runtime.DisposableEffect(Unit) { open++; onDispose { open-- } }
+        if (Overlays.diagnostics) {
+            DiagnosticsOverlay { Overlays.diagnostics = false }
+        }
     }
 }
