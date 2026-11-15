@@ -210,6 +210,7 @@ object Overlays {
 class MainActivity : ComponentActivity() {
     private var intentState by mutableStateOf<Intent?>(null)
     private var backDownAt = 0L
+    private var lastDpadAt = 0L
 
     override fun attachBaseContext(base: Context) = super.attachBaseContext(Language.wrap(base))
 
@@ -246,6 +247,12 @@ class MainActivity : ComponentActivity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val code = event.keyCode
+        // Throttle held D-pad repeats globally so fast key-repeat never starves the main thread
+        if (event.action == KeyEvent.ACTION_DOWN && (code == KeyEvent.KEYCODE_DPAD_UP || code == KeyEvent.KEYCODE_DPAD_DOWN || code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT)) {
+            val now = SystemClock.uptimeMillis()
+            if (event.repeatCount > 0 && now - lastDpadAt < 90L) return true
+            lastDpadAt = now
+        }
         // Swallow remainder of a long-OK press once MapScreen handled it
         if (Keys.okConsumed && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
             if (event.action == KeyEvent.ACTION_UP) Keys.okConsumed = false
