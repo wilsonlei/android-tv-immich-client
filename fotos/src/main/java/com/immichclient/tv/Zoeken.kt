@@ -272,9 +272,10 @@ private fun Suggesties(staat: ZoekStaat, nav: Nav, zoek: (String) -> Unit) {
     val ctx = LocalContext.current
     val recent = remember { Recent.lijst(ctx) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 10.dp)) {
+        val rowPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         if (recent.isNotEmpty()) {
             Text(stringResource(R.string.recent_gezocht), style = MaterialTheme.typography.titleMedium)
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(recent) { t ->
                     Keuze(selected = false, onClick = { zoek(t) }, leadingIcon = { Icon(Icons.Filled.History, null, Modifier.width(18.dp)) }, tekst = t)
                 }
@@ -282,7 +283,7 @@ private fun Suggesties(staat: ZoekStaat, nav: Nav, zoek: (String) -> Unit) {
         }
         Text(stringResource(R.string.probeer), style = MaterialTheme.typography.titleMedium)
         val suggesties = stringArrayResource(R.array.suggesties).toList()
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(suggesties) { t ->
                 Keuze(selected = false, onClick = { zoek(t) }, tekst = t)
             }
@@ -292,7 +293,7 @@ private fun Suggesties(staat: ZoekStaat, nav: Nav, zoek: (String) -> Unit) {
             val persoon = stringResource(R.string.persoon)
             // de tien die het vaakst voorkomen (volgorde van Immich: favorieten, dan het aantal foto's) + "Alle personen"
             // (raster met gezichten, zoeken en sorteren); vroeger 30 chips in één rij = veel scrollen
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(staat.personen.take(TOP_PERSONEN), key = { it.id }) { p ->
                     Keuze(
                         selected = false,
