@@ -1,5 +1,6 @@
 package com.immichclient.tv
 
+import android.net.Uri
 import androidx.compose.runtime.Immutable
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -52,7 +53,7 @@ data class Details(
 
 /** Which photos the timeline shows: everything, an album, a person, or favorites. */
 @Immutable
-data class Filter(val albumId: String? = null, val personId: String? = null, val favorites: Boolean = false) {
+data class Filter(val albumId: String? = null, val personId: String? = null, val favorites: Boolean = false, val bbox: String? = null) {
     fun query(newestFirst: Boolean) = buildString {
         append("order=").append(if (newestFirst) "desc" else "asc")
         // in an album: no partner photos and no "timeline" visibility filter (archived album photos belong in it);
@@ -61,6 +62,7 @@ data class Filter(val albumId: String? = null, val personId: String? = null, val
         else append("&visibility=timeline&withPartners=").append(personId == null && !favorites && Settings.partners)
         if (personId != null) append("&personId=").append(personId)
         if (favorites) append("&isFavorite=true")
+        if (bbox != null) append("&bbox=").append(Uri.encode(bbox))
         append("&withStacked=true")
     }
 }

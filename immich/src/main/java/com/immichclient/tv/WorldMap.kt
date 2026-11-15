@@ -570,7 +570,19 @@ private fun MapContent(state: MapState, nav: Nav, visible: Boolean) {
                 val ids = c.members.map { m.id[it] }
                 val title = state.name(c).ifEmpty { Language.s(R.string.map) }
                 when (action) {
-                    MapAction.GRID -> nav.open(Screen.MapPhotos(title, ids, nav.scope))
+                    MapAction.GRID -> {
+                        var minLat = Double.POSITIVE_INFINITY; var maxLat = Double.NEGATIVE_INFINITY
+                        var minLon = Double.POSITIVE_INFINITY; var maxLon = Double.NEGATIVE_INFINITY
+                        for (i in c.members) {
+                            val la = m.lat[i]; val lo = m.lon[i]
+                            if (la < minLat) minLat = la; if (la > maxLat) maxLat = la
+                            if (lo < minLon) minLon = lo; if (lo > maxLon) maxLon = lo
+                        }
+                        val pad = 1e-5
+                        val bbox = "${minLon - pad},${minLat - pad},${maxLon + pad},${maxLat + pad}"
+                        val sub = Language.plural(R.plurals.photos, ids.size, Language.number(ids.size))
+                        nav.open(Screen.Timeline(title, sub, Filter(bbox = bbox), withMemories = false, startNewest = true, scope = nav.scope))
+                    }
                     else -> nav.view(MapSource(ids, nav.scope), 0, title, action == MapAction.SLIDESHOW, null) { state.requestFocus++ }
                 }
             }

@@ -122,8 +122,8 @@ class TimelineState(val filter: Filter, newestFirst: Boolean, private val scope:
 
     /** Apply settings to an existing timeline (main timeline/favorites): only when something differs. */
     fun applySettings() {
-        if (filter.albumId == null && filter.personId == null && newestFirst != Settings.newestFirst) { setOrder(Settings.newestFirst); return }
-        if (filter.albumId == null && filter.personId == null && !filter.favorites && withPartners != Settings.partners) reload()
+        if (filter.albumId == null && filter.personId == null && filter.bbox == null && newestFirst != Settings.newestFirst) { setOrder(Settings.newestFirst); return }
+        if (filter.albumId == null && filter.personId == null && filter.bbox == null && !filter.favorites && withPartners != Settings.partners) reload()
     }
 
     private fun sumUp() {
