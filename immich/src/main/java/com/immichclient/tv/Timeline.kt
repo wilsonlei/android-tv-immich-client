@@ -65,6 +65,7 @@ import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -243,17 +244,30 @@ fun TimelineScreen(screen: Screen.Timeline, nav: Nav) {
 
         // Always use current rows (jump is also captured by the scrollbar; a stale list gave the wrong row)
         val currentRows = rememberUpdatedState(rows)
+        var jumpJob by remember { mutableStateOf<Job?>(null) }
         fun jump(monthIndex: Int) {
             val m = state.months.getOrNull(monthIndex) ?: return
             jumpLabel = monthTitle(m.key)
             state.load(m.key)
-            scope.launch {
+            jumpJob?.cancel()
+            jumpJob = scope.launch {
                 val i = currentRows.value.indexOfFirst { it.key == "k-${m.key}" }
                 Log.i("Immich", "jump to ${m.key}: row $i")
                 if (i >= 0) state.grid.list.scrollToItem(i + topCount)
-                // Wait until the month arrives and focus the first photo
+                // Wait until the month arrives and its PhotoRow is laid out, then re-scroll (preceding months
+                // loading can shift row indices) and focus the first photo
                 repeat(100) {
-                    state.loaded[m.key]?.firstOrNull()?.let { state.grid.focusTarget = it.id; return@launch }
+                    val list = state.loaded[m.key]
+                    if (list != null) {
+                        val firstPhoto = list.firstOrNull() ?: return@launch
+                        val photoRowIdx = currentRows.value.indexOfFirst { r -> r is PhotoRow && r.row.chunks.any { c -> c.cells.any { it.asset.id == firstPhoto.id } } }
+                        if (photoRowIdx >= 0) {
+                            val headerIdx = currentRows.value.indexOfFirst { it.key == "k-${m.key}" }
+                            state.grid.list.scrollToItem((if (headerIdx >= 0) headerIdx else photoRowIdx) + topCount)
+                            state.grid.focusTarget = firstPhoto.id
+                            return@launch
+                        }
+                    }
                     delay(30)
                 }
             }
