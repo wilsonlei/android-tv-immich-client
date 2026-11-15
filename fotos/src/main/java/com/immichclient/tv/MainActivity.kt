@@ -458,7 +458,7 @@ private fun FotosApp(finish: () -> Unit, herstart: () -> Unit, testIndex: Int = 
                         is Scherm.Personen -> PersonenScherm(scherm.staat, nav)
                         is Scherm.Mappen -> MappenScherm(scherm, nav)
                         is Scherm.Lijst -> LijstScherm(scherm, nav)
-                        is Scherm.Instellingen -> InstellingenScherm(opnieuwKoppelen = { instellen = true }, ontkoppeld = { sectie = Sectie.FOTOS }, toetsen = { toetsen = true })
+                        is Scherm.Instellingen -> InstellingenScherm(opnieuwKoppelen = { instellen = true }, ontkoppeld = { sectie = Sectie.FOTOS })
                     }
                 }
             }

@@ -62,7 +62,7 @@ import kotlin.math.roundToLong
  */
 
 @Composable
-fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toetsen: () -> Unit) {
+fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit) {
     val ctx = LocalContext.current
     val ik by produceState(Immich.ik, Immich.stand) { value = Immich.laadIk() }
     val immichVersie by produceState<String?>(null, Immich.stand) { value = Immich.serverVersie() }
@@ -86,7 +86,6 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
     var hulp by remember { mutableStateOf(false) }
     var albumKiezer by remember { mutableStateOf(false) }
     var persoonKiezer by remember { mutableStateOf(false) }
-    var diagnose by remember { mutableStateOf(false) }
     var dreamRonde by remember { mutableIntStateOf(0) }
     val dreamActief = remember(dreamRonde, hulp) { Screensaver.actief(ctx) }
     val dreamMag = remember(dreamRonde, hulp) { Screensaver.magSchrijven(ctx) }
@@ -97,13 +96,12 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
     // keuzelijst (albums/personen) dicht: focus terug op die regel (anders pakt Android de lade)
     val albumRegel = remember { FocusRequester() }
     val persoonRegel = remember { FocusRequester() }
-    var laatsteKiezer by remember { mutableStateOf<FocusRequester?>(null) }
-    val kiezerOpen = albumKiezer || persoonKiezer
-    var kiezerWasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(kiezerOpen) {
-        if (kiezerOpen) laatsteKiezer = if (albumKiezer) albumRegel else persoonRegel
-        if (kiezerWasOpen && !kiezerOpen) { delay(16); runCatching { laatsteKiezer?.requestFocus() } }
-        kiezerWasOpen = kiezerOpen
+    var laatsteLaag by remember { mutableStateOf<FocusRequester?>(null) }
+    val laagOpen = albumKiezer || persoonKiezer
+    var laagWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(laagOpen) {
+        if (laagWasOpen && !laagOpen) { delay(16); runCatching { laatsteLaag?.requestFocus() }; laatsteLaag = null }
+        laagWasOpen = laagOpen
     }
     LaunchedEffect(Unit) {
         delay(30)
@@ -157,8 +155,8 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
         item { Actie(stringResource(R.string.dream_voorbeeld), stringResource(R.string.dream_voorbeeld_uitleg)) { runCatching { ctx.startActivity(android.content.Intent(ctx, VoorbeeldActivity::class.java)) } } }
         item { Keuzes(stringResource(R.string.dream_bron), stringResource(R.string.dream_bron_uitleg), DreamBron.entries.map { stringResource(it.label) }, Instellingen.dreamBron.ordinal) { Instellingen.dreamBron = DreamBron.entries[it] } }
         val bron = Instellingen.dreamBron
-        if (bron == DreamBron.ALBUM || bron == DreamBron.COMBI) item { Actie(stringResource(R.string.dream_albums), Instellingen.dreamAlbumNamen.joinToString(", ").ifBlank { stringResource(R.string.dream_kies) }, Modifier.focusRequester(albumRegel)) { albumKiezer = true } }
-        if (bron == DreamBron.PERSOON || bron == DreamBron.COMBI) item { Actie(stringResource(R.string.dream_personen), Instellingen.dreamPersoonNamen.joinToString(", ").ifBlank { stringResource(R.string.dream_kies) }, Modifier.focusRequester(persoonRegel)) { persoonKiezer = true } }
+        if (bron == DreamBron.ALBUM || bron == DreamBron.COMBI) item { Actie(stringResource(R.string.dream_albums), Instellingen.dreamAlbumNamen.joinToString(", ").ifBlank { stringResource(R.string.dream_kies) }, Modifier.focusRequester(albumRegel)) { laatsteLaag = albumRegel; albumKiezer = true } }
+        if (bron == DreamBron.PERSOON || bron == DreamBron.COMBI) item { Actie(stringResource(R.string.dream_personen), Instellingen.dreamPersoonNamen.joinToString(", ").ifBlank { stringResource(R.string.dream_kies) }, Modifier.focusRequester(persoonRegel)) { laatsteLaag = persoonRegel; persoonKiezer = true } }
         if (bron != DreamBron.ALLES && bron != DreamBron.HERINNERINGEN)
             schakel(R.string.dream_ander_album, R.string.dream_ander_album_uitleg, uitAan, Instellingen.dreamAnderAlbum) { Instellingen.dreamAnderAlbum = it }
         item {
@@ -268,15 +266,12 @@ fun InstellingenScherm(opnieuwKoppelen: () -> Unit, ontkoppeld: () -> Unit, toet
         }
 
         groep(R.string.groep_over)
-        item { Actie(stringResource(R.string.toetsen), stringResource(R.string.toetsen_uitleg)) { toetsen() } }
         item { Info(stringResource(R.string.app_regel, stringResource(Instellingen.uiterlijk.label)), stringResource(R.string.versie, versie)) }
         item { Info(stringResource(R.string.immich_server), immichVersie?.let { stringResource(R.string.versie, it) } ?: "…") }
         if (alles) item { Info(stringResource(R.string.kaart), stringResource(R.string.kaart_bron, SAT_BRON)) }
         item { Text(stringResource(R.string.onofficieel_lang), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
-        if (alles) item { Actie(stringResource(R.string.diagnose), stringResource(R.string.diagnose_uitleg)) { diagnose = true } }
     }
     if (hulp) ScreensaverHulp { hulp = false; dreamRonde++ }
-    if (diagnose) DiagnoseLaag { diagnose = false }
     if (albumKiezer) KiesLijst(stringResource(R.string.dream_albums), albumKeuzes(), Instellingen.dreamAlbum, sluit = { albumKiezer = false }, meer = true) { id, naam ->
         Instellingen.wisselDreamAlbum(id, naam)
     }
