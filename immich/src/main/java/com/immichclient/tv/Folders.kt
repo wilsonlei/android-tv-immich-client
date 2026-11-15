@@ -247,6 +247,7 @@ fun FoldersScreen(screen: Screen.Folders, nav: Nav) {
                             onFocusTargetDone = { state.folderFocus = -1 },
                             onFocus = { state.lastFolderFocus = idx },
                         ) {
+                            state.folderFocus = idx
                             nav.open(Screen.Folders(state.tree, m, nav.scope))
                         }
                     }
@@ -265,7 +266,7 @@ fun FoldersScreen(screen: Screen.Folders, nav: Nav) {
         }
     }
     // Returning from a subfolder or first load: focus the last selected subfolder, or first photo if no subfolders
-    LaunchedEffect(folders.isEmpty(), photos.isNotEmpty()) {
+    LaunchedEffect(state, folders.isEmpty(), photos.isNotEmpty()) {
         delay(30)
         if (state.grid.returnTo != null || state.grid.focusTarget != null) return@LaunchedEffect
         if (folders.isNotEmpty()) {
