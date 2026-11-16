@@ -172,6 +172,9 @@ object RecentSearches {
         val l = (listOf(t) + list(c).filter { !it.equals(t, true) }).take(MAX)
         c.getSharedPreferences("zoeken", Context.MODE_PRIVATE).edit().putString("recent", l.joinToString("\n")).apply()
     }
+    fun clear(c: Context) {
+        c.getSharedPreferences("zoeken", Context.MODE_PRIVATE).edit().remove("recent").apply()
+    }
 }
 
 @Composable
@@ -292,11 +295,19 @@ fun SearchScreen(state: SearchState, nav: Nav) {
 @Composable
 private fun Suggestions(state: SearchState, nav: Nav, onSearch: (String) -> Unit) {
     val ctx = LocalContext.current
-    val recent = remember { RecentSearches.list(ctx) }
+    var recent by remember { mutableStateOf(RecentSearches.list(ctx)) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(top = 10.dp)) {
         val rowPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
         if (recent.isNotEmpty()) {
-            Text(stringResource(R.string.recent_searches), style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.recent_searches), style = MaterialTheme.typography.titleMedium)
+                ChoiceChip(
+                    selected = false,
+                    onClick = { RecentSearches.clear(ctx); recent = emptyList() },
+                    leadingIcon = { Icon(Icons.Filled.Close, null, Modifier.width(18.dp)) },
+                    text = stringResource(R.string.key_clear),
+                )
+            }
             LazyRow(contentPadding = rowPadding, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(recent) { t ->
                     ChoiceChip(selected = false, onClick = { onSearch(t) }, leadingIcon = { Icon(Icons.Filled.History, null, Modifier.width(18.dp)) }, text = t)
