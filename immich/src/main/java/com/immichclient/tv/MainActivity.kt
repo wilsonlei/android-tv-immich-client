@@ -92,6 +92,7 @@ import kotlinx.coroutines.launch
 import okio.Path.Companion.toOkioPath
 import java.io.File
 import kotlin.math.roundToInt
+import kotlin.system.exitProcess
 
 class App : Application() {
     override fun onCreate() {
@@ -218,7 +219,10 @@ class MainActivity : ComponentActivity() {
         applyTestExtras(intent)
         setContent {
             PhotosTheme {
-                PhotosApp(intent = intentState ?: intent, onExit = { finish() })
+                PhotosApp(intent = intentState ?: intent, onExit = {
+                    finishAndRemoveTask()
+                    exitProcess(0)
+                })
             }
         }
     }
