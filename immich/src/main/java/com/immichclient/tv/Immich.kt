@@ -155,7 +155,7 @@ object Immich {
 
     /** Smart search (CLIP): "beach", "birthday with cake", "dog in the snow". Order = relevance; language = app language. */
     suspend fun searchSmart(text: String, page: Int, videoOnly: Boolean?): Page {
-        val body = JSONObject().put("query", text).put("language", Language.code).put("size", 120).put("page", page)
+        val body = JSONObject().put("query", text).put("language", Language.code).put("size", 120).put("page", page).put("withExif", true)
         if (videoOnly != null) body.put("type", if (videoOnly) "VIDEO" else "IMAGE")
         return page(JSONObject(post("/search/smart", body)))
     }
@@ -166,14 +166,14 @@ object Immich {
     }
 
     suspend fun searchPlace(city: String, page: Int): Page =
-        page(JSONObject(post("/search/metadata", JSONObject().put("city", city).put("size", 250).put("page", page).put("order", "desc"))))
+        page(JSONObject(post("/search/metadata", JSONObject().put("city", city).put("size", 250).put("page", page).put("order", "desc").put("withExif", true))))
 
     /**
      * Filename / description / OCR (text in photo), optionally photos or videos only. Without text = all
      * photos or videos from the timeline, newest first (like the type filter in the web app).
      */
     suspend fun searchText(text: String?, field: String, page: Int, videoOnly: Boolean? = null): Page {
-        val body = JSONObject().put("size", 250).put("page", page).put("order", "desc")
+        val body = JSONObject().put("size", 250).put("page", page).put("order", "desc").put("withExif", true)
         if (text != null) body.put(field, text) else body.put("visibility", "timeline")
         if (videoOnly != null) body.put("type", if (videoOnly) "VIDEO" else "IMAGE")
         return page(JSONObject(post("/search/metadata", body)))
