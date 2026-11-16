@@ -348,38 +348,26 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
         AnimatedContent(
             targetState = state.index,
             transitionSpec = {
-                if (state.slideshow && !Settings.slideshowSlide) {
-                    slideshowFadeTransform()
-                } else {
-                    slideshowSlideTransform(state.direction)
-                }
-            },
-            label = "photo",
-        ) { i ->
-            val a = state.source.at(i)
-            if (a != null) PhotoView(a, state, active = i == state.index, kenBurnsTracker = kenBurnsTracker)
-            else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted) }
-        }
-
-        // Animated video transition: follows Settings (slide vs fade) during slideshow, slides on manual navigation
-        AnimatedContent(
-            targetState = if (current?.video == true) state.index else null,
-            modifier = Modifier.fillMaxSize(),
-            transitionSpec = {
-                val spec = if (initialState == null || targetState == null || (state.slideshow && !Settings.slideshowSlide)) {
+                val spec = if (state.slideshow && !Settings.slideshowSlide) {
                     slideshowFadeTransform()
                 } else {
                     slideshowSlideTransform(state.direction)
                 }
                 spec using null
             },
-            label = "video_transition",
-        ) { targetIdx ->
-            val a = targetIdx?.let { state.source.at(it) }
-            if (a != null && a.video) {
-                VideoView(a, state, player)
-            } else {
-                Spacer(Modifier.fillMaxSize())
+            label = "media",
+        ) { i ->
+            val a = state.source.at(i)
+            when {
+                a == null -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted) }
+                a.video -> VideoView(a, state, player)
+                else -> PhotoFrame(
+                    a = a,
+                    active = i == state.index,
+                    kenBurns = state.slideshow && Settings.kenBurns,
+                    durationMs = Settings.slideshowMs.toInt(),
+                    kenBurnsTracker = kenBurnsTracker,
+                )
             }
         }
 
@@ -452,30 +440,14 @@ private fun SlideshowRing(state: ViewerState) {
 }
 
 @Composable
-private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, kenBurnsTracker: KenBurnsTracker) {
-    if (a.video) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
-            // Video background: thumbhash stretched full screen darkened
-            if (hash != null && Settings.blurredBackground) {
-                Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
-                Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-            }
-        }
-    } else {
-        PhotoFrame(
-            a = a,
-            active = active,
-            kenBurns = state.slideshow && Settings.kenBurns,
-            durationMs = Settings.slideshowMs.toInt(),
-            kenBurnsTracker = kenBurnsTracker,
-        )
-    }
-}
-
-@Composable
 private fun VideoView(a: Asset, state: ViewerState, player: ExoPlayer) {
     Box(Modifier.fillMaxSize()) {
+        val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
+        // Video background: thumbhash stretched full screen darkened
+        if (hash != null && Settings.blurredBackground) {
+            Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
+            Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
+        }
         key(a.id) {
             AndroidView(
                 factory = { c ->
