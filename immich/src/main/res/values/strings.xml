@@ -391,20 +391,10 @@
     <string name="dream_source">Photos</string>
     <string name="dream_source_desc">Which photos the screensaver shows</string>
     <string name="dream_all_photos">All photos</string>
-    <string name="dream_album">Album</string>
-    <string name="dream_people">People</string>
-    <string name="dream_combo">Albums + people</string>
     <string name="dream_from">From</string>
     <string name="dream_from_desc">Only photos taken in or after this year</string>
     <string name="all_years">All years</string>
     <string name="dream_order_desc">Random, or by date (continues where it left off)</string>
-    <string name="dream_albums">Albums</string>
-    <string name="dream_albums_hint">"%1$d selected  ·  OK = on/off"</string>
-    <string name="dream_other_album">Show other album</string>
-    <string name="dream_other_album_desc">If a photo is also in another album, show that album\'s name instead (e.g. “Birthday” instead of “Screensaver”)</string>
-    <string name="dream_memories">Today\'s memories</string>
-    <string name="dream_person">Person</string>
-    <string name="dream_choose">Not chosen yet – press OK</string>
     <string name="dream_time_desc">How long each photo stays on screen (◀ ▶ on the remote: previous / next)</string>
     <string name="dream_clock">Clock</string>
     <string name="dream_clock_desc">Time and date in the top left corner</string>

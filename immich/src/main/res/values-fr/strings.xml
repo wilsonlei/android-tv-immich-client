@@ -379,20 +379,10 @@
     <string name="dream_source">Photos</string>
     <string name="dream_source_desc">Quelles photos l\'écran de veille affiche</string>
     <string name="dream_all_photos">Toutes les photos</string>
-    <string name="dream_album">Album</string>
-    <string name="dream_people">Personnes</string>
-    <string name="dream_combo">Albums + personnes</string>
     <string name="dream_from">À partir de</string>
     <string name="dream_from_desc">Seulement les photos de cette année ou plus récentes</string>
     <string name="all_years">Toutes les années</string>
     <string name="dream_order_desc">Aléatoire, ou par date (reprend là où il s\'était arrêté)</string>
-    <string name="dream_albums">Albums</string>
-    <string name="dream_albums_hint">"%1$d choisi(s)  ·  OK = oui/non"</string>
-    <string name="dream_other_album">Afficher l\'autre album</string>
-    <string name="dream_other_album_desc">Si une photo est aussi dans un autre album, afficher ce nom (p. ex. « Anniversaire » au lieu de « Écran de veille »)</string>
-    <string name="dream_memories">Souvenirs du jour</string>
-    <string name="dream_person">Personne</string>
-    <string name="dream_choose">Pas encore choisi – appuyez sur OK</string>
     <string name="dream_time_desc">Durée d\'affichage de chaque photo (◀ ▶ sur la télécommande : précédente / suivante)</string>
     <string name="dream_clock">Horloge</string>
     <string name="dream_clock_desc">Heure et date en haut à gauche</string>

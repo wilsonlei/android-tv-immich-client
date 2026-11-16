@@ -92,15 +92,6 @@ object Settings {
 
     // ---- Screensaver (DreamService, see Dream.kt) ----
     var dreamSource by choice("dream_source", DreamSource.ALL)
-    /** chosen album IDs, comma-separated (up to 2.7.2 always one) */
-    var dreamAlbum by text("dream_album", "")
-    /** names matching [dreamAlbum], newline-separated (same order) */
-    var dreamAlbumName by text("dream_album_name", "")
-    /** for a source album/favorites: if the photo is also in another album, show that name instead of the source */
-    var dreamOtherAlbum by bool("dream_other_album", true)
-    /** chosen people (comma-separated; up to 2.7.2 always one) and their names (newlines), like albums */
-    var dreamPerson by text("dream_person", "")
-    var dreamPersonName by text("dream_person_name", "")
     /** only photos from this year onward (0 = all years) */
     var dreamFrom by int("dream_from", 0)
     var dreamOrder by choice("dream_order", DreamOrder.RANDOM)
@@ -135,25 +126,8 @@ object Settings {
         if (barMs !in BAR_TIMES) barMs = 4000
     }
 
-    val dreamAlbums get() = listFrom(dreamAlbum)
-    val dreamAlbumNames get() = namesFrom(dreamAlbumName)
-    val dreamPeople get() = listFrom(dreamPerson)
-    val dreamPersonNames get() = namesFrom(dreamPersonName)
     /** choices for "from": 0 = all years, then 2000 .. this year */
     val DREAM_YEARS get() = listOf(0) + (2000..java.time.LocalDate.now().year)
-    private fun listFrom(s: String) = s.split(',').filter { it.isNotBlank() }
-    private fun namesFrom(s: String) = s.split('\n').filter { it.isNotBlank() }
-    /** (id, name) pairs of a selection, padding missing names with "" */
-    fun pairs(ids: List<String>, names: List<String>) = ids.mapIndexed { i, id -> id to names.getOrElse(i) { "" } }
-    private fun toggle(ids: List<String>, nm: List<String>, id: String, name: String): Pair<String, String> {
-        val p = pairs(ids, nm).toMutableList()
-        if (!p.removeAll { it.first == id }) p += id to name
-        return p.joinToString(",") { it.first } to p.joinToString("\n") { it.second }
-    }
-    /** Toggle an album in the screensaver selection. */
-    fun toggleDreamAlbum(id: String, name: String) { toggle(dreamAlbums, dreamAlbumNames, id, name).let { dreamAlbum = it.first; dreamAlbumName = it.second } }
-    /** Toggle a person in the screensaver selection. */
-    fun toggleDreamPerson(id: String, name: String) { toggle(dreamPeople, dreamPersonNames, id, name).let { dreamPerson = it.first; dreamPersonName = it.second } }
 
     /** Slideshow time in ms. */
     val slideshowMs get() = slideshowSeconds * 1000L
@@ -169,10 +143,7 @@ enum class ClusterLevel(@StringRes val label: Int, val radius: Float, val maxZoo
 enum class MapStyle(@StringRes val label: Int) { DARK(R.string.dark), LIGHT(R.string.light), SATELLITE(R.string.satellite) }
 /** Where the screensaver gets its photos from. */
 enum class DreamSource(@StringRes val label: Int) {
-    ALL(R.string.dream_all_photos), ALBUM(R.string.dream_albums), FAVORITES(R.string.section_favorites),
-    MEMORIES(R.string.dream_memories), PERSON(R.string.dream_people),
-    /** the selected albums and selected people combined */
-    COMBO(R.string.dream_combo),
+    ALL(R.string.dream_all_photos), FAVORITES(R.string.section_favorites),
 }
 /** Order of the screensaver photos; for a fixed order it resumes where it left off ([Settings.dreamPosition]). */
 enum class DreamOrder(@StringRes val label: Int) { RANDOM(R.string.random), OLDEST(R.string.oldest_first), NEWEST(R.string.newest_first) }

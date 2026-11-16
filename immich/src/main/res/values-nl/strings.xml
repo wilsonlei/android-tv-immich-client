@@ -373,20 +373,10 @@
     <string name="dream_source">Foto\'s</string>
     <string name="dream_source_desc">Welke foto\'s de screensaver toont</string>
     <string name="dream_all_photos">Alle foto\'s</string>
-    <string name="dream_album">Album</string>
-    <string name="dream_people">Personen</string>
-    <string name="dream_combo">Albums + personen</string>
     <string name="dream_from">Vanaf</string>
     <string name="dream_from_desc">Alleen foto\'s uit dit jaar of later</string>
     <string name="all_years">Alle jaren</string>
     <string name="dream_order_desc">Willekeurig, of op datum (gaat verder waar hij was)</string>
-    <string name="dream_albums">Albums</string>
-    <string name="dream_albums_hint">"%1$d gekozen  ·  OK = aan/uit"</string>
-    <string name="dream_other_album">Ander album tonen</string>
-    <string name="dream_other_album_desc">Zit een foto ook in een ander album, dan dié naam tonen (bijv. “Verjaardag” i.p.v. “Screensaver”)</string>
-    <string name="dream_memories">Herinneringen van vandaag</string>
-    <string name="dream_person">Persoon</string>
-    <string name="dream_choose">Nog niet gekozen – druk op OK</string>
     <string name="dream_time_desc">Hoe lang elke foto blijft staan (◀ ▶ op de afstandsbediening: vorige / volgende)</string>
     <string name="dream_clock">Klok</string>
     <string name="dream_clock_desc">Tijd en datum linksboven</string>

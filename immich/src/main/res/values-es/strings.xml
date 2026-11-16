@@ -379,20 +379,10 @@
     <string name="dream_source">Fotos</string>
     <string name="dream_source_desc">Qué fotos muestra el salvapantallas</string>
     <string name="dream_all_photos">Todas las fotos</string>
-    <string name="dream_album">Álbum</string>
-    <string name="dream_people">Personas</string>
-    <string name="dream_combo">Álbumes + personas</string>
     <string name="dream_from">Desde</string>
     <string name="dream_from_desc">Solo fotos de este año o posteriores</string>
     <string name="all_years">Todos los años</string>
     <string name="dream_order_desc">Aleatorio, o por fecha (sigue donde se quedó)</string>
-    <string name="dream_albums">Álbumes</string>
-    <string name="dream_albums_hint">"%1$d elegidos  ·  OK = sí/no"</string>
-    <string name="dream_other_album">Mostrar otro álbum</string>
-    <string name="dream_other_album_desc">Si una foto también está en otro álbum, mostrar ese nombre (p. ej. «Cumpleaños» en lugar de «Salvapantallas»)</string>
-    <string name="dream_memories">Recuerdos de hoy</string>
-    <string name="dream_person">Persona</string>
-    <string name="dream_choose">Todavía sin elegir: pulsa OK</string>
     <string name="dream_time_desc">Cuánto tiempo se muestra cada foto (◀ ▶ en el mando: anterior / siguiente)</string>
     <string name="dream_clock">Reloj</string>
     <string name="dream_clock_desc">Hora y fecha arriba a la izquierda</string>

@@ -80,9 +80,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             }.getOrDefault("?")
         }
     }
-    // screensaver: pickers (album/person) and state (re-read on change and on resume)
-    var albumPicker by remember { mutableStateOf(false) }
-    var personPicker by remember { mutableStateOf(false) }
+    // screensaver: state (re-read on change and on resume)
     var dreamRound by remember { mutableIntStateOf(0) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
     androidx.compose.runtime.DisposableEffect(lifecycle) {
@@ -96,16 +94,6 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
     val dreamRow = remember { FocusRequester() }
     val first = remember { FocusRequester() }
     val languageRow = remember { FocusRequester() }
-    // picker list (albums/people) closed: return focus to that row (otherwise Android picks the drawer)
-    val albumRow = remember { FocusRequester() }
-    val personRow = remember { FocusRequester() }
-    var lastOverlay by remember { mutableStateOf<FocusRequester?>(null) }
-    val overlayOpen = albumPicker || personPicker
-    var overlayWasOpen by remember { mutableStateOf(false) }
-    LaunchedEffect(overlayOpen) {
-        if (overlayWasOpen && !overlayOpen) { delay(16); runCatching { lastOverlay?.requestFocus() }; lastOverlay = null }
-        overlayWasOpen = overlayOpen
-    }
     LaunchedEffect(Unit) {
         delay(30)
         // after a language switch (recreate) the list is still in the same position: focus back on the Language row, otherwise the first row
@@ -157,17 +145,12 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             item { ActionRow(stringResource(R.string.dream_setup), stringResource(R.string.dream_setup_desc)) { runCatching { ctx.startActivity(android.content.Intent(ctx, ScreensaverHelpActivity::class.java)) } } }
             item { ActionRow(stringResource(R.string.dream_preview), stringResource(R.string.dream_preview_desc)) { runCatching { ctx.startActivity(android.content.Intent(ctx, PreviewActivity::class.java)) } } }
             item { ChoicesRow(stringResource(R.string.dream_source), stringResource(R.string.dream_source_desc), DreamSource.entries.map { stringResource(it.label) }, Settings.dreamSource.ordinal) { Settings.dreamSource = DreamSource.entries[it] } }
-            val source = Settings.dreamSource
-            if (source == DreamSource.ALBUM || source == DreamSource.COMBO) item { ActionRow(stringResource(R.string.dream_albums), Settings.dreamAlbumNames.joinToString(", ").ifBlank { stringResource(R.string.dream_choose) }, Modifier.focusRequester(albumRow)) { lastOverlay = albumRow; albumPicker = true } }
-            if (source == DreamSource.PERSON || source == DreamSource.COMBO) item { ActionRow(stringResource(R.string.dream_people), Settings.dreamPersonNames.joinToString(", ").ifBlank { stringResource(R.string.dream_choose) }, Modifier.focusRequester(personRow)) { lastOverlay = personRow; personPicker = true } }
-            if (source != DreamSource.ALL && source != DreamSource.MEMORIES)
-                toggleRow(R.string.dream_other_album, R.string.dream_other_album_desc, offOn, Settings.dreamOtherAlbum) { Settings.dreamOtherAlbum = it }
             item {
                 val years = Settings.DREAM_YEARS
                 ChoicesRow(stringResource(R.string.dream_from), stringResource(R.string.dream_from_desc), years.map { if (it == 0) stringResource(R.string.all_years) else it.toString() },
                     years.indexOf(Settings.dreamFrom).coerceAtLeast(0)) { Settings.dreamFrom = years[it] }
             }
-            if (source != DreamSource.MEMORIES) item {
+            item {
                 ChoicesRow(stringResource(R.string.order), stringResource(R.string.dream_order_desc), DreamOrder.entries.map { stringResource(it.label) }, Settings.dreamOrder.ordinal) { Settings.dreamOrder = DreamOrder.entries[it] }
             }
             item {
@@ -269,12 +252,6 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         item { InfoRow(stringResource(R.string.immich_server), immichVersion?.let { stringResource(R.string.version, it) } ?: "…") }
         if (all) item { InfoRow(stringResource(R.string.map), stringResource(R.string.map_attribution, SAT_ATTRIBUTION)) }
         item { Text(stringResource(R.string.unofficial_long), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
-    }
-    if (albumPicker) PickerList(stringResource(R.string.dream_albums), albumChoices(), Settings.dreamAlbum, close = { albumPicker = false }, multi = true) { id, name ->
-        Settings.toggleDreamAlbum(id, name)
-    }
-    if (personPicker) PickerList(stringResource(R.string.dream_people), personChoices(), Settings.dreamPerson, close = { personPicker = false }, multi = true) { id, name ->
-        Settings.toggleDreamPerson(id, name)
     }
     if (greetingInput) TextInputOverlay(stringResource(R.string.greeting), Settings.greetingText, action = stringResource(R.string.action_done), close = { greetingInput = false }) {
         Settings.greetingText = it; greetingInput = false

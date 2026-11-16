@@ -124,19 +124,17 @@ class DreamState {
 }
 
 /**
- * Provides photos according to settings: all (random, via /search/random in batches), an album / favorites /
- * a person (month list, weighted random month, then a random photo; at most 3 months in memory), or today's
- * memories. Videos are skipped; recently shown photos don't repeat immediately. If the chosen source is empty
- * (no album selected, no favorites, no memories today), falls back to random photos.
+ * Provides photos according to settings: all (random, via /search/random in batches) or favorites
+ * (month list, weighted random month, then a random photo; at most 3 months in memory).
+ * Videos are skipped; recently shown photos don't repeat immediately. If the chosen source is empty
+ * (no favorites), falls back to random photos.
  */
 class DreamQueue {
     private val queue = ArrayDeque<Asset>()
     private val recent = ArrayDeque<String>()
-    /** Month lists per source filter (multiple albums = multiple filters). */
+    /** Month lists per source filter. */
     private var months: Map<Filter, List<Month>>? = null
     private var monthsSig: String? = null
-    /** Photo ID -> name of the chosen album/person it came from (for the source label). */
-    private val fromName = HashMap<String, String>()
     // Fixed order: month keys in order, current position, and photos of the current month
     private var sequence: List<String>? = null
     private var seqByFilter: Map<Filter, Set<String>> = emptyMap()
@@ -147,18 +145,10 @@ class DreamQueue {
     private val monthCache = object : LinkedHashMap<String, List<Asset>>(4, 0.75f, true) {
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Asset>>?) = size > 3
     }
-    private var memories: List<Asset>? = null
-    private var memoryDay: LocalDate? = null
-    private var memoryIndex = 0
-    /** Photos that truly came from the chosen source (not the fallback): only those get the source label. */
-    private val sourceIds = LinkedHashSet<String>()
     /** Prefetched (and preloaded) next photo, see [lookAhead]. */
     private var ahead: Asset? = null
     /** Never run next() and lookAhead() concurrently (otherwise both fetch the same batch). */
     private val lock = kotlinx.coroutines.sync.Mutex()
-
-    fun isFromSource(id: String) = id in sourceIds
-    fun nameOf(id: String): String? = fromName[id]
 
     suspend fun next(): Asset? = lock.withLock {
         ahead?.let { ahead = null; return@withLock it }
@@ -173,28 +163,17 @@ class DreamQueue {
         SingletonImageLoader.get(ctx).enqueue(previewRequest(ctx, a.id))
     }
 
-    /** Source as filters (timeline endpoint), each with its label name; empty = nothing selected. */
-    private fun sourceFilters(): List<Pair<Filter, String?>> {
-        val s = Settings
-        val albums = s.pairs(s.dreamAlbums, s.dreamAlbumNames).map { (id, n) -> Filter(albumId = id) to n.ifBlank { null } }
-        val people = s.pairs(s.dreamPeople, s.dreamPersonNames).map { (id, n) -> Filter(personId = id) to n.ifBlank { null } }
-        return when (s.dreamSource) {
-            DreamSource.ALL -> listOf(Filter() to null)
-            DreamSource.MEMORIES -> emptyList()
-            DreamSource.ALBUM -> albums
-            DreamSource.FAVORITES -> listOf(Filter(favorites = true) to null)
-            DreamSource.PERSON -> people
-            DreamSource.COMBO -> albums + people
-        }
+    /** Source as filters (timeline endpoint). */
+    private fun sourceFilters(): List<Filter> = when (Settings.dreamSource) {
+        DreamSource.ALL -> listOf(Filter())
+        DreamSource.FAVORITES -> listOf(Filter(favorites = true))
     }
 
     private suspend fun fetch(): Asset? {
-        if (Settings.dreamSource == DreamSource.MEMORIES) return mark(fromMemories()) ?: fromBatch()
         val fs = sourceFilters()
-        if (fs.isEmpty()) return fromBatch() // nothing chosen yet: random photos
-        if (Settings.dreamOrder != DreamOrder.RANDOM) return mark(fromSequence(fs)) ?: fromBatch()
+        if (Settings.dreamOrder != DreamOrder.RANDOM) return fromSequence(fs) ?: fromBatch()
         if (Settings.dreamSource == DreamSource.ALL) return fromBatch()
-        return mark(fromMonths(fs)) ?: fromBatch()
+        return fromMonths(fs) ?: fromBatch()
     }
 
     private fun yearOf(m: Month) = m.key.take(4).toIntOrNull() ?: 0
@@ -213,11 +192,11 @@ class DreamQueue {
      * Fixed order (oldest/newest first) across all filters combined: month by month, photos merged and sorted by date.
      * Starts over after the last one. Position is saved so the screensaver resumes there next time.
      */
-    private suspend fun fromSequence(fs: List<Pair<Filter, String?>>): Asset? {
+    private suspend fun fromSequence(fs: List<Filter>): Asset? {
         val oldest = Settings.dreamOrder == DreamOrder.OLDEST
-        val sig = "${Settings.dreamSource}|${fs.map { it.first }}|${Settings.dreamFrom}|$oldest".hashCode().toString()
+        val sig = "${Settings.dreamSource}|$fs|${Settings.dreamFrom}|$oldest".hashCode().toString()
         if (seqSig != sig || sequence == null) {
-            val per = monthsOf(fs.map { it.first })
+            val per = monthsOf(fs)
             seqByFilter = per.mapValues { (_, ms) -> ms.map { it.key }.toSet() }
             val keys = per.values.flatten().map { it.key }.distinct().sorted().let { if (oldest) it else it.reversed() }
             sequence = keys; seqSig = sig; seqBuf.clear(); seqIdx = 0; resumeAfter = null
@@ -237,21 +216,16 @@ class DreamQueue {
         while (seqBuf.isEmpty()) {
             if (seqIdx >= ms.size) { seqIdx = 0; resumeAfter = null; if (++wraps > 1) return null }
             val key = ms[seqIdx++]
-            val merged = LinkedHashMap<String, Pair<Asset, String?>>()
-            for ((f, name) in fs) if (key in seqByFilter[f].orEmpty())
-                Immich.month(f, true, key).filter { !it.video }.forEach { merged.putIfAbsent(it.id, it to name) }
-            var photos = merged.values.sortedBy { it.first.date }.let { if (oldest) it else it.reversed() }
-            resumeAfter?.let { r -> photos = photos.filter { if (oldest) it.first.date > r else it.first.date < r } }
+            val merged = LinkedHashMap<String, Asset>()
+            for (f in fs) if (key in seqByFilter[f].orEmpty())
+                Immich.month(f, true, key).filter { !it.video }.forEach { merged.putIfAbsent(it.id, it) }
+            var photos = merged.values.sortedBy { it.date }.let { if (oldest) it else it.reversed() }
+            resumeAfter?.let { r -> photos = photos.filter { if (oldest) it.date > r else it.date < r } }
             resumeAfter = null
-            for ((a, name) in photos) { name?.let { fromName[a.id] = it }; seqBuf.addLast(a) }
+            for (a in photos) seqBuf.addLast(a)
         }
         val a = seqBuf.removeFirst()
         Settings.dreamPosition = "$sig\t${a.date}"
-        return a
-    }
-
-    private fun mark(a: Asset?): Asset? {
-        if (a != null) { sourceIds.add(a.id); if (sourceIds.size > 120) sourceIds.remove(sourceIds.first()).also { if (fromName.size > 400) fromName.clear() } }
         return a
     }
 
@@ -260,9 +234,8 @@ class DreamQueue {
         return queue.removeFirstOrNull()?.let { rememberRecent(it) }
     }
 
-    /** Random photo from one or more sources, weighted by photo count (a large album appears more often). */
-    private suspend fun fromMonths(sources: List<Pair<Filter, String?>>): Asset? {
-        val fs = sources.map { it.first }
+    /** Random photo from one or more sources, weighted by photo count. */
+    private suspend fun fromMonths(fs: List<Filter>): Asset? {
         val sig = "$fs|${Settings.dreamFrom}"
         if (monthsSig != sig || months == null) {
             months = monthsOf(fs); monthsSig = sig; monthCache.clear(); recent.clear()
@@ -277,24 +250,9 @@ class DreamQueue {
             val list = monthCache.getOrPut("$f|${m.key}") { Immich.month(f, true, m.key) }
             val a = list.filter { !it.video }.randomOrNull() ?: return@repeat
             last = a
-            sources.firstOrNull { it.first == f }?.second?.let { fromName[a.id] = it }
             if (a.id !in recent) return rememberRecent(a, total)
         }
         return last?.let { rememberRecent(it, total) }
-    }
-
-    private suspend fun fromMemories(): Asset? {
-        val today = LocalDate.now()
-        if (memories == null || memoryDay != today) {
-            memories = Immich.memories(today).flatMap { it.assets }.filter { !it.video }.shuffled()
-            memoryDay = today; memoryIndex = 0
-        }
-        val l = memories ?: return null
-        if (l.isEmpty()) return null
-        // "from": skip memories before that year
-        val from = Settings.dreamFrom
-        repeat(l.size) { val a = l[memoryIndex++ % l.size]; if (a.date.year >= from) return a }
-        return null
     }
 
     private fun rememberRecent(a: Asset, total: Int = Int.MAX_VALUE): Asset {
@@ -312,20 +270,6 @@ private fun messageFor(e: Throwable): Int {
         m.startsWith("Immich 401") || m.startsWith("Immich 403") -> R.string.dream_key_error
         m.startsWith("Immich 4") -> R.string.dream_no_photos
         else -> R.string.dream_no_connection
-    }
-}
-
-/** Source label for the bottom-left line (album name, "3 years ago", ...); null for "all photos" or fallback. */
-@Composable
-private fun sourceName(a: Asset, queue: DreamQueue): String? {
-    if (Settings.dreamSource == DreamSource.ALL || !queue.isFromSource(a.id)) return null
-    return when (Settings.dreamSource) {
-        DreamSource.ALL -> null
-        DreamSource.ALBUM -> queue.nameOf(a.id) ?: Settings.dreamAlbumNames.singleOrNull()
-        DreamSource.PERSON -> queue.nameOf(a.id) ?: Settings.dreamPersonNames.singleOrNull()
-        DreamSource.COMBO -> queue.nameOf(a.id)
-        DreamSource.FAVORITES -> stringResource(R.string.section_favorites)
-        DreamSource.MEMORIES -> (LocalDate.now().year - a.date.year).takeIf { it > 0 }?.let { pluralStringResource(R.plurals.years_ago, it, it) }
     }
 }
 
@@ -434,14 +378,9 @@ fun DreamScreen(state: DreamState) {
                 Text(current.date.format(DateFormats.dayLong).replaceFirstChar { it.titlecase(Language.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 18.sp, color = Color.White, shadow = SHADOW), maxLines = 1)
                 // With map, the place is shown near the dot; otherwise here
                 val place = listOfNotNull(current.city, current.country).joinToString(", ").takeIf { it.isNotEmpty() && !(Settings.dreamMap != MapSize.OFF && current.lat != null) }
-                // Albums containing the photo (excluding the chosen source album, already shown as source name)
-                val source = sourceName(current, queue)
-                // Albums other than the source(s); with "show other album" those replace the source name ("Birthday" instead of "Screensaver")
-                val sources = if (Settings.dreamSource == DreamSource.ALBUM || Settings.dreamSource == DreamSource.COMBO) Settings.dreamAlbumNames.toSet() + listOfNotNull(source) else setOfNotNull(source)
-                val other = albumNames(current.id).filter { it !in sources }
-                val albums = other.takeIf { it.isNotEmpty() }?.let(::albumLine)
-                val showSource = source.takeUnless { albums != null && Settings.dreamOtherAlbum }
-                val line = listOfNotNull(place, showSource, albums).joinToString("  ·  ")
+                // Albums containing the photo
+                val albums = albumNames(current.id).takeIf { it.isNotEmpty() }?.let(::albumLine)
+                val line = listOfNotNull(place, albums).joinToString("  ·  ")
                 if (line.isNotEmpty()) Text(line, style = TextStyle(fontFamily = Overpass, fontSize = 15.sp, color = Color(0xD9FFFFFF), shadow = SHADOW), maxLines = 1)
             }
         }

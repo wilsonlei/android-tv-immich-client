@@ -373,20 +373,10 @@
     <string name="dream_source">Fotos</string>
     <string name="dream_source_desc">Welche Fotos der Bildschirmschoner zeigt</string>
     <string name="dream_all_photos">Alle Fotos</string>
-    <string name="dream_album">Album</string>
-    <string name="dream_people">Personen</string>
-    <string name="dream_combo">Alben + Personen</string>
     <string name="dream_from">Ab</string>
     <string name="dream_from_desc">Nur Fotos aus diesem Jahr oder später</string>
     <string name="all_years">Alle Jahre</string>
     <string name="dream_order_desc">Zufällig oder nach Datum (macht dort weiter, wo er war)</string>
-    <string name="dream_albums">Alben</string>
-    <string name="dream_albums_hint">"%1$d ausgewählt  ·  OK = an/aus"</string>
-    <string name="dream_other_album">Anderes Album zeigen</string>
-    <string name="dream_other_album_desc">Ist ein Foto auch in einem anderen Album, dessen Namen zeigen (z. B. „Geburtstag“ statt „Bildschirmschoner“)</string>
-    <string name="dream_memories">Erinnerungen von heute</string>
-    <string name="dream_person">Person</string>
-    <string name="dream_choose">Noch nicht gewählt – OK drücken</string>
     <string name="dream_time_desc">Wie lange jedes Foto zu sehen ist (◀ ▶ auf der Fernbedienung: zurück / weiter)</string>
     <string name="dream_clock">Uhr</string>
     <string name="dream_clock_desc">Uhrzeit und Datum oben links</string>
