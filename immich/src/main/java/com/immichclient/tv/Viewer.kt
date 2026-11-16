@@ -89,7 +89,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
-import androidx.media3.common.VideoSize
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultLoadControl
@@ -522,18 +521,6 @@ private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, alpha: () -
 
 @Composable
 private fun VideoView(a: Asset, state: ViewerState, player: ExoPlayer) {
-    var ratio by remember(a.id) { mutableFloatStateOf(a.ratio) }
-    DisposableEffect(a.id, player) {
-        val listener = object : Player.Listener {
-            override fun onVideoSizeChanged(v: VideoSize) {
-                if (v.width > 0 && v.height > 0) {
-                    ratio = v.width * v.pixelWidthHeightRatio / v.height
-                }
-            }
-        }
-        player.addListener(listener)
-        onDispose { player.removeListener(listener) }
-    }
     Box(Modifier.fillMaxSize()) {
         key(a.id) {
             AndroidView(
@@ -547,7 +534,7 @@ private fun VideoView(a: Asset, state: ViewerState, player: ExoPlayer) {
                 },
                 modifier = Modifier
                     .align(Alignment.Center)
-                    .aspectRatio(ratio.coerceIn(0.2f, 5f), matchHeightConstraintsFirst = true),
+                    .aspectRatio(a.ratio.coerceIn(0.2f, 5f), matchHeightConstraintsFirst = true),
             )
         }
         if (state.videoError) Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
