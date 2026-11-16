@@ -6,6 +6,7 @@ import android.os.SystemClock
 import android.service.dreams.DreamService
 import android.util.Log
 import android.view.KeyEvent
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
@@ -607,6 +608,8 @@ class PreviewActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Keep screen on during preview: otherwise the system screensaver/sleep kicks in over the preview.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Immich.selectAccount(this, null)
         val state = DreamState().apply { testError = intent.getStringExtra("test_fout") }
         setContent {
