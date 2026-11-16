@@ -345,12 +345,12 @@ fun DreamScreen(state: DreamState) {
 
     // Loop: pick photo -> load preview -> show -> wait for timer or key press
     LaunchedEffect(Unit) {
-        if (Immich.key.isBlank() || Immich.server.isBlank() || state.testError == "koppeling") { state.message = R.string.dream_not_connected; return@LaunchedEffect }
+        if (Immich.key.isBlank() || Immich.server.isBlank() || state.testError == "connection") { state.message = R.string.dream_not_connected; return@LaunchedEffect }
         val loader = SingletonImageLoader.get(ctx)
         suspend fun nextPhoto(): Asset? = when (state.testError) {
-            "leeg" -> null
-            "net" -> throw java.net.ConnectException("test")
-            "sleutel" -> throw java.io.IOException("Immich 401: test")
+            "empty" -> null
+            "network" -> throw java.net.ConnectException("test")
+            "key" -> throw java.io.IOException("Immich 401: test")
             else -> queue.next()
         }
         /** Failure: without a photo show centered message, with a photo only the cloud icon (photo stays). */
@@ -574,7 +574,7 @@ class PreviewActivity : ComponentActivity() {
         // Keep screen on during preview: otherwise the system screensaver/sleep kicks in over the preview.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         Immich.selectAccount(this, null)
-        val state = DreamState().apply { testError = intent.getStringExtra("test_fout") }
+        val state = DreamState().apply { testError = intent.getStringExtra("test_error") }
         setContent {
             PhotosTheme {
                 Box(
