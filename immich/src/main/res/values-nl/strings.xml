@@ -60,8 +60,8 @@
     <string name="slideshow_paused">Diashow gepauzeerd</string>
     <string name="video_error">Video kan niet worden afgespeeld</string>
     <string name="info">Info</string>
-    <string name="hint_info_map">"OK toon op kaart   ·   ◀ ▶ bladeren   ·   ⏩ 10 verder"</string>
-    <string name="hint_info">"◀ ▶ bladeren   ·   OK diashow   ·   ⏩ 10 verder"</string>
+    <string name="hint_info_map">"OK toon op kaart   ·   ◀ ▶ bladeren   ·   ⏩︎ 10 verder"</string>
+    <string name="hint_info">"◀ ▶ bladeren   ·   OK diashow   ·   ⏩︎ 10 verder"</string>
 
     <string name="search">Zoeken</string>
     <string name="search_title">Zoeken: %s</string>
@@ -134,12 +134,6 @@
     <string name="map_hint">"◀▶▲▼ kiezen / schuiven   ·   OK inzoomen   ·   OK lang: alle foto\'s   ·   ⏯ diashow   ·   ⏪︎⏩︎ zoomen   ·   Terug: hele wereld"</string>
 
     <string name="settings">Instellingen</string>
-    <string name="settings_sub">"◀ ▶ of OK: waarde kiezen   ·   Terug lang ingedrukt: menu   ·   INFO: toetsen"</string>
-    <string name="show_settings">Instellingen tonen</string>
-    <string name="settings_basic">Basis</string>
-    <string name="settings_all">Alle</string>
-    <string name="settings_basic_desc">Alleen de meestgebruikte instellingen. Kies Alle voor de rest.</string>
-    <string name="settings_all_desc">Alles, ook de uitgebreide instellingen</string>
     <string name="off">Uit</string>
     <string name="on">Aan</string>
     <string name="group_slideshow">Diashow</string>

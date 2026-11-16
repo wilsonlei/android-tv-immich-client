@@ -60,8 +60,8 @@
     <string name="slideshow_paused">Diashow pausiert</string>
     <string name="video_error">Video kann nicht abgespielt werden</string>
     <string name="info">Info</string>
-    <string name="hint_info_map">"OK auf Karte zeigen   ·   ◀ ▶ blättern   ·   ⏩ 10 weiter"</string>
-    <string name="hint_info">"◀ ▶ blättern   ·   OK Diashow   ·   ⏩ 10 weiter"</string>
+    <string name="hint_info_map">"OK auf Karte zeigen   ·   ◀ ▶ blättern   ·   ⏩︎ 10 weiter"</string>
+    <string name="hint_info">"◀ ▶ blättern   ·   OK Diashow   ·   ⏩︎ 10 weiter"</string>
 
     <string name="search">Suche</string>
     <string name="search_title">Suche: %s</string>
@@ -134,12 +134,6 @@
     <string name="map_hint">"◀▶▲▼ wählen / verschieben   ·   OK zoomen   ·   OK lang: alle Fotos   ·   ⏯ Diashow   ·   ⏪︎⏩︎ Zoomstufe   ·   Zurück: ganze Welt"</string>
 
     <string name="settings">Einstellungen</string>
-    <string name="settings_sub">"◀ ▶ oder OK: Wert wählen   ·   Zurück lang drücken: Menü   ·   INFO: Tasten"</string>
-    <string name="show_settings">Einstellungen anzeigen</string>
-    <string name="settings_basic">Einfach</string>
-    <string name="settings_all">Alle</string>
-    <string name="settings_basic_desc">Nur die meistgenutzten Einstellungen. Wähle Alle für den Rest.</string>
-    <string name="settings_all_desc">Alles, auch die erweiterten Einstellungen</string>
     <string name="off">Aus</string>
     <string name="on">An</string>
     <string name="group_slideshow">Diashow</string>

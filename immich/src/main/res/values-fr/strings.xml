@@ -63,8 +63,8 @@
     <string name="slideshow_paused">Diaporama en pause</string>
     <string name="video_error">Impossible de lire cette vidéo</string>
     <string name="info">Infos</string>
-    <string name="hint_info_map">"OK voir sur la carte   ·   ◀ ▶ parcourir   ·   ⏩ 10 plus loin"</string>
-    <string name="hint_info">"◀ ▶ parcourir   ·   OK diaporama   ·   ⏩ 10 plus loin"</string>
+    <string name="hint_info_map">"OK voir sur la carte   ·   ◀ ▶ parcourir   ·   ⏩︎ 10 plus loin"</string>
+    <string name="hint_info">"◀ ▶ parcourir   ·   OK diaporama   ·   ⏩︎ 10 plus loin"</string>
 
     <string name="search">Recherche</string>
     <string name="search_title">Recherche : %s</string>
@@ -140,12 +140,6 @@
     <string name="map_hint">"◀▶▲▼ choisir / déplacer   ·   OK zoomer   ·   OK long : toutes les photos   ·   ⏯ diaporama   ·   ⏪︎⏩︎ zoom   ·   Retour : monde entier"</string>
 
     <string name="settings">Paramètres</string>
-    <string name="settings_sub">"◀ ▶ ou OK : choisir une valeur   ·   Retour maintenu : menu   ·   INFO : touches"</string>
-    <string name="show_settings">Afficher les réglages</string>
-    <string name="settings_basic">Essentiels</string>
-    <string name="settings_all">Tous</string>
-    <string name="settings_basic_desc">Seulement les réglages les plus utilisés. Choisissez Tous pour le reste.</string>
-    <string name="settings_all_desc">Tout, y compris les réglages avancés</string>
     <string name="off">Désactivé</string>
     <string name="on">Activé</string>
     <string name="group_slideshow">Diaporama</string>

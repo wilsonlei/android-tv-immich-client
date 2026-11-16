@@ -63,8 +63,8 @@
     <string name="slideshow_paused">Presentación en pausa</string>
     <string name="video_error">No se puede reproducir este vídeo</string>
     <string name="info">Información</string>
-    <string name="hint_info_map">"OK ver en el mapa   ·   ◀ ▶ pasar   ·   ⏩ 10 adelante"</string>
-    <string name="hint_info">"◀ ▶ pasar   ·   OK presentación   ·   ⏩ 10 adelante"</string>
+    <string name="hint_info_map">"OK ver en el mapa   ·   ◀ ▶ pasar   ·   ⏩︎ 10 adelante"</string>
+    <string name="hint_info">"◀ ▶ pasar   ·   OK presentación   ·   ⏩︎ 10 adelante"</string>
 
     <string name="search">Buscar</string>
     <string name="search_title">Búsqueda: %s</string>
@@ -140,12 +140,6 @@
     <string name="map_hint">"◀▶▲▼ elegir / mover   ·   OK acercar   ·   Mantén OK: todas las fotos   ·   ⏯ presentación   ·   ⏪︎⏩︎ zoom   ·   Atrás: todo el mundo"</string>
 
     <string name="settings">Ajustes</string>
-    <string name="settings_sub">"◀ ▶ u OK: elegir valor   ·   Mantén Atrás: menú   ·   INFO: teclas"</string>
-    <string name="show_settings">Mostrar ajustes</string>
-    <string name="settings_basic">Básicos</string>
-    <string name="settings_all">Todos</string>
-    <string name="settings_basic_desc">Solo los ajustes más usados. Elige Todos para el resto.</string>
-    <string name="settings_all_desc">Todo, también los ajustes avanzados</string>
     <string name="off">Desactivado</string>
     <string name="on">Activado</string>
     <string name="group_slideshow">Presentación</string>

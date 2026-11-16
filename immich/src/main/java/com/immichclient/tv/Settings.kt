@@ -47,7 +47,7 @@ object Settings {
     // ---- Slideshow ----
     /** Slowly zoom in during the slideshow. */
     var kenBurns by bool("ken_burns", true)
-    var slideshowSeconds by int("slideshow_s", 6)
+    var slideshowSeconds by int("slideshow_s", 5)
     val SLIDESHOW_TIMES = (3..30).toList()
     var slideshowRandom by bool("slideshow_random", false)
     /** Play videos in the slideshow (otherwise skip). */
@@ -55,9 +55,9 @@ object Settings {
     var slideshowSlide by bool("slideshow_slide", false)
 
     // ---- Viewer ----
-    var viewerMap by choice("viewer_map", MapSize.LARGE)
+    var viewerMap by choice("viewer_map", MapSize.SMALL)
     /** Hide the date/place bar after ... ms (0 = always show, -1 = off). */
-    var barMs by int("bar_ms", 4000)
+    var barMs by int("bar_ms", 0)
     val BAR_TIMES = listOf(-1, 0) + (2..20).map { it * 1000 }
     var counter by bool("counter", true)
     /** album(s) of the photo in the bar and info panel (useful when coming from a person or the timeline) */
@@ -81,10 +81,6 @@ object Settings {
     /** last viewed place: "lat,lon,zoom" (for MapStart.LAST) */
     var mapLast by text("map_last", "")
 
-    // ---- Settings screen ----
-    /** show all settings (otherwise only basic); per device */
-    var allSettings by bool("all_settings", false, perDevice = true)
-
     // ---- Appearance ----
     var accent by choice("accent", Accent.BLUE)
 
@@ -95,11 +91,11 @@ object Settings {
     var dreamOrder by choice("dream_order", DreamOrder.RANDOM)
     /** for a fixed order: where the screensaver left off ("source-key<TAB>date"), so it resumes there */
     var dreamPosition by text("dream_position", "")
-    var dreamSeconds by int("dream_s", 15)
+    var dreamSeconds by int("dream_s", 5)
     val DREAM_TIMES = (3..20).toList()
     var dreamClock by bool("dream_clock", true)
     /** country map bottom right: off / small / large (up to 2.7.2 a toggle "dream_map", see [load]) */
-    var dreamMap by choice("dream_map_size", MapSize.LARGE)
+    var dreamMap by choice("dream_map_size", MapSize.SMALL)
     var dreamKenBurns by bool("dream_ken_burns", true)
     /** date/place (and album name) bottom left */
     var dreamInfo by bool("dream_info", true)
@@ -119,7 +115,7 @@ object Settings {
         if (!p.contains("dream_map_size$suffix") && !p.getBoolean("dream_map$suffix", true)) dreamMap = MapSize.OFF
         slideshowSeconds = slideshowSeconds.coerceIn(SLIDESHOW_TIMES.first(), SLIDESHOW_TIMES.last())
         dreamSeconds = dreamSeconds.coerceIn(DREAM_TIMES.first(), DREAM_TIMES.last())
-        if (barMs !in BAR_TIMES) barMs = 4000
+        if (barMs !in BAR_TIMES) barMs = 0
     }
 
     /** choices for "from": 0 = all years, then 2000 .. this year */

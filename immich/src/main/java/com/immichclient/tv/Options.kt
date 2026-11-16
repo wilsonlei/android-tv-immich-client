@@ -99,13 +99,11 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         // after a language switch (recreate) the list is still in the same position: focus back on the Language row, otherwise the first row
         if (Language.focusLanguage) { Language.focusLanguage = false; repeat(5) { if (runCatching { languageRow.requestFocus() }.isSuccess) return@LaunchedEffect; delay(16) } }
         // via the gear icon next to the screensaver (system settings): jump straight to that group
-        if (Keys.toScreensaver) { Keys.toScreensaver = false; if (SCREENSAVER_ENABLED) { list.scrollToItem(dreamItemIndex(Settings.allSettings)); delay(50); if (runCatching { dreamRow.requestFocus() }.isSuccess) return@LaunchedEffect } }
+        if (Keys.toScreensaver) { Keys.toScreensaver = false; if (SCREENSAVER_ENABLED) { list.scrollToItem(DREAM_ITEM_INDEX); delay(50); if (runCatching { dreamRow.requestFocus() }.isSuccess) return@LaunchedEffect } }
         runCatching { first.requestFocus() }
     }
     LaunchedEffect(confirm) { if (confirm) { delay(6000); confirm = false } }
     val offOn = listOf(stringResource(R.string.off), stringResource(R.string.on))
-    // basic = the settings most people look for; "all" shows the rest too (remembered per device)
-    val all = Settings.allSettings
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -113,19 +111,15 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         contentPadding = PaddingValues(start = 24.dp, end = 24.dp, top = 20.dp, bottom = 80.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        item { ScreenHeader(stringResource(R.string.settings), stringResource(R.string.settings_sub)) }
-        item {
-            ChoicesRow(stringResource(R.string.show_settings), stringResource(if (all) R.string.settings_all_desc else R.string.settings_basic_desc),
-                listOf(stringResource(R.string.settings_basic), stringResource(R.string.settings_all)), if (all) 1 else 0, Modifier.focusRequester(first)) { Settings.allSettings = it == 1 }
-        }
+        item { ScreenHeader(stringResource(R.string.settings), null) }
 
-        // row counts per mode are also used in dreamItemIndex()
+        // row count is also used in DREAM_ITEM_INDEX
         groupHeader(R.string.group_slideshow)
         item {
             ChoicesRow(stringResource(R.string.time_per_photo), stringResource(R.string.time_per_photo_desc), Settings.SLIDESHOW_TIMES.map { stringResource(R.string.seconds, it) },
-                Settings.SLIDESHOW_TIMES.indexOf(Settings.slideshowSeconds).coerceAtLeast(0)) { Settings.slideshowSeconds = Settings.SLIDESHOW_TIMES[it] }
+                Settings.SLIDESHOW_TIMES.indexOf(Settings.slideshowSeconds).coerceAtLeast(0), Modifier.focusRequester(first)) { Settings.slideshowSeconds = Settings.SLIDESHOW_TIMES[it] }
         }
-        if (all) toggleRow(R.string.ken_burns, R.string.ken_burns_desc, offOn, Settings.kenBurns) { Settings.kenBurns = it }
+        toggleRow(R.string.ken_burns, R.string.ken_burns_desc, offOn, Settings.kenBurns) { Settings.kenBurns = it }
         item { ChoicesRow(stringResource(R.string.order), stringResource(R.string.slideshow_order_desc), listOf(stringResource(R.string.by_date), stringResource(R.string.random)), if (Settings.slideshowRandom) 1 else 0) { Settings.slideshowRandom = it == 1 } }
         item { ChoicesRow(stringResource(R.string.videos), stringResource(R.string.slideshow_videos_desc), listOf(stringResource(R.string.play), stringResource(R.string.skip)), if (Settings.slideshowVideos) 0 else 1) { Settings.slideshowVideos = it == 0 } }
         item { ChoicesRow(stringResource(R.string.transition), stringResource(R.string.transition_desc), listOf(stringResource(R.string.fade), stringResource(R.string.slide)), if (Settings.slideshowSlide) 1 else 0) { Settings.slideshowSlide = it == 1 } }
@@ -158,8 +152,8 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             }
             toggleRow(R.string.dream_clock, R.string.dream_clock_desc, offOn, Settings.dreamClock) { Settings.dreamClock = it }
             item { ChoicesRow(stringResource(R.string.map_on_photo), stringResource(R.string.dream_map_desc), MapSize.entries.map { stringResource(it.label) }, Settings.dreamMap.ordinal) { Settings.dreamMap = MapSize.entries[it] } }
-            if (all) toggleRow(R.string.ken_burns, R.string.dream_ken_burns_desc, offOn, Settings.dreamKenBurns) { Settings.dreamKenBurns = it }
-            if (all) toggleRow(R.string.dream_info, R.string.dream_info_desc, offOn, Settings.dreamInfo) { Settings.dreamInfo = it }
+            toggleRow(R.string.ken_burns, R.string.dream_ken_burns_desc, offOn, Settings.dreamKenBurns) { Settings.dreamKenBurns = it }
+            toggleRow(R.string.dream_info, R.string.dream_info_desc, offOn, Settings.dreamInfo) { Settings.dreamInfo = it }
         }
 
         groupHeader(R.string.group_viewing)
@@ -176,31 +170,31 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             }
             ChoicesRow(stringResource(R.string.date_and_place), stringResource(R.string.date_and_place_desc), labels, Settings.BAR_TIMES.indexOf(Settings.barMs).coerceAtLeast(0)) { Settings.barMs = Settings.BAR_TIMES[it] }
         }
-        if (all) item { ChoicesRow(stringResource(R.string.counter), stringResource(R.string.counter_desc, Language.number(12345)), offOn, if (Settings.counter) 1 else 0) { Settings.counter = it == 1 } }
-        if (all) toggleRow(R.string.album_name, R.string.album_name_desc, offOn, Settings.albumName) { Settings.albumName = it }
-        if (all) toggleRow(R.string.blurred_background, R.string.blurred_background_desc, offOn, Settings.blurredBackground) { Settings.blurredBackground = it }
+        item { ChoicesRow(stringResource(R.string.counter), stringResource(R.string.counter_desc, Language.number(12345)), offOn, if (Settings.counter) 1 else 0) { Settings.counter = it == 1 } }
+        toggleRow(R.string.album_name, R.string.album_name_desc, offOn, Settings.albumName) { Settings.albumName = it }
+        toggleRow(R.string.blurred_background, R.string.blurred_background_desc, offOn, Settings.blurredBackground) { Settings.blurredBackground = it }
 
         groupHeader(R.string.group_timeline)
         item { ChoicesRow(stringResource(R.string.photo_size), stringResource(R.string.photo_size_desc), RowSize.entries.map { stringResource(it.label) }, Settings.rowSize.ordinal) { Settings.rowSize = RowSize.entries[it] } }
-        if (all) item { ChoicesRow(stringResource(R.string.order), stringResource(R.string.timeline_order_desc), listOf(stringResource(R.string.newest_first), stringResource(R.string.oldest_first)), if (Settings.newestFirst) 0 else 1) { Settings.newestFirst = it == 0 } }
-        if (all) toggleRow(R.string.partner_photos, R.string.partner_photos_desc, offOn, Settings.partners) { Settings.partners = it }
-        if (all) toggleRow(R.string.memories_at_top, R.string.memories_at_top_desc, offOn, Settings.memories) { Settings.memories = it }
+        item { ChoicesRow(stringResource(R.string.order), stringResource(R.string.timeline_order_desc), listOf(stringResource(R.string.newest_first), stringResource(R.string.oldest_first)), if (Settings.newestFirst) 0 else 1) { Settings.newestFirst = it == 0 } }
+        toggleRow(R.string.partner_photos, R.string.partner_photos_desc, offOn, Settings.partners) { Settings.partners = it }
+        toggleRow(R.string.memories_at_top, R.string.memories_at_top_desc, offOn, Settings.memories) { Settings.memories = it }
         item {
             val choices = listOf(Section.PHOTOS, Section.MEMORIES, Section.MAP, Section.ALBUMS, Section.FOLDERS, Section.FAVORITES)
             ChoicesRow(stringResource(R.string.start_screen), stringResource(R.string.start_screen_desc), choices.map { stringResource(it.label) },
                 choices.indexOf(Settings.start).coerceAtLeast(0)) { Settings.start = choices[it] }
         }
-        if (all) item {
+        item {
             val example = stringResource(R.string.greeting_with_name, stringResource(R.string.greeting_afternoon), me?.name?.substringBefore(' ') ?: "…")
             ChoicesRow(stringResource(R.string.greeting), stringResource(R.string.greeting_desc, example), Greeting.entries.map { stringResource(it.label) }, Settings.greeting.ordinal) { Settings.greeting = Greeting.entries[it] }
         }
-        if (all && Settings.greeting == Greeting.CUSTOM) item {
+        if (Settings.greeting == Greeting.CUSTOM) item {
             ActionRow(stringResource(R.string.custom_text), Settings.greetingText.ifBlank { stringResource(R.string.nothing_entered_yet) }) { greetingInput = true }
         }
 
         groupHeader(R.string.group_map)
-        if (all) item { ChoicesRow(stringResource(R.string.start_view), stringResource(R.string.start_view_desc), MapStart.entries.map { stringResource(it.label) }, Settings.mapStart.ordinal) { Settings.mapStart = MapStart.entries[it] } }
-        if (all) item { ChoicesRow(stringResource(R.string.cluster_level), stringResource(R.string.cluster_level_desc), ClusterLevel.entries.map { stringResource(it.label) }, Settings.cluster.ordinal) { Settings.cluster = ClusterLevel.entries[it] } }
+        item { ChoicesRow(stringResource(R.string.start_view), stringResource(R.string.start_view_desc), MapStart.entries.map { stringResource(it.label) }, Settings.mapStart.ordinal) { Settings.mapStart = MapStart.entries[it] } }
+        item { ChoicesRow(stringResource(R.string.cluster_level), stringResource(R.string.cluster_level_desc), ClusterLevel.entries.map { stringResource(it.label) }, Settings.cluster.ordinal) { Settings.cluster = ClusterLevel.entries[it] } }
         item { ChoicesRow(stringResource(R.string.map_style), stringResource(R.string.map_style_desc), MapStyle.entries.map { stringResource(it.label) }, Settings.mapStyle.ordinal) { Settings.mapStyle = MapStyle.entries[it] } }
 
         groupHeader(R.string.group_appearance)
@@ -215,21 +209,19 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             ChoicesRow(stringResource(R.string.accent_color), stringResource(R.string.accent_color_desc), Accent.entries.map { stringResource(it.label) }, Settings.accent.ordinal, color = Settings.accent.primary) { Settings.accent = Accent.entries[it] }
         }
 
-        if (all) {
-            groupHeader(R.string.group_storage)
-            item {
-                ActionRow(stringResource(R.string.clear_image_cache), cache ?: "…") {
-                    val l = SingletonImageLoader.get(ctx)
-                    l.memoryCache?.clear(); ThumbHash.clear()
-                    Thread { runCatching { l.diskCache?.clear() }; cacheRound++ }.start()
-                }
+        groupHeader(R.string.group_storage)
+        item {
+            ActionRow(stringResource(R.string.clear_image_cache), cache ?: "…") {
+                val l = SingletonImageLoader.get(ctx)
+                l.memoryCache?.clear(); ThumbHash.clear()
+                Thread { runCatching { l.diskCache?.clear() }; cacheRound++ }.start()
             }
         }
 
         groupHeader(R.string.group_account)
         item { InfoRow(stringResource(R.string.immich_server), Immich.server.ifBlank { "–" }) }
         item { InfoRow(stringResource(R.string.signed_in_as), me?.let { "${it.name}  ·  ${it.email}" } ?: "…") }
-        if (all) item {
+        item {
             val miss = Permissions.missing
             val status = when {
                 miss == null -> stringResource(R.string.perms_checking)
@@ -248,7 +240,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         groupHeader(R.string.group_about)
         item { InfoRow(stringResource(R.string.app_line, stringResource(R.string.app_name)), stringResource(R.string.version, version)) }
         item { InfoRow(stringResource(R.string.immich_server), immichVersion?.let { stringResource(R.string.version, it) } ?: "…") }
-        if (all) item { InfoRow(stringResource(R.string.map), stringResource(R.string.map_attribution, SAT_ATTRIBUTION)) }
+        item { InfoRow(stringResource(R.string.map), stringResource(R.string.map_attribution, SAT_ATTRIBUTION)) }
         item { Text(stringResource(R.string.unofficial_long), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
     }
     if (greetingInput) TextInputOverlay(stringResource(R.string.greeting), Settings.greetingText, action = stringResource(R.string.action_done), close = { greetingInput = false }) {
@@ -256,8 +248,8 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
     }
 }
 
-/** Item index of the "Screensaver" group header in the list: header + Basic/All row + Slideshow group (1 + 4 or 5 rows). */
-private fun dreamItemIndex(all: Boolean) = 3 + if (all) 5 else 4
+/** Item index of the "Screensaver" group header in the list: ScreenHeader + Slideshow group (1 + 5 rows). */
+private const val DREAM_ITEM_INDEX = 7
 /** Show the Screensaver group in settings (since 2.2; false hides the group again, the DreamService remains). */
 const val SCREENSAVER_ENABLED = true
 

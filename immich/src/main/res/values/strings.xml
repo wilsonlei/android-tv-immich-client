@@ -68,8 +68,8 @@
     <string name="slideshow_paused">Slideshow paused</string>
     <string name="video_error">This video can\'t be played</string>
     <string name="info">Info</string>
-    <string name="hint_info_map">"OK show on map   ·   ◀ ▶ browse   ·   ⏩ skip 10"</string>
-    <string name="hint_info">"◀ ▶ browse   ·   OK slideshow   ·   ⏩ skip 10"</string>
+    <string name="hint_info_map">"OK show on map   ·   ◀ ▶ browse   ·   ⏩︎ skip 10"</string>
+    <string name="hint_info">"◀ ▶ browse   ·   OK slideshow   ·   ⏩︎ skip 10"</string>
 
     <!-- Search -->
     <string name="search">Search</string>
@@ -148,12 +148,6 @@
 
     <!-- Settings -->
     <string name="settings">Settings</string>
-    <string name="settings_sub">"◀ ▶ or OK: choose a value   ·   Hold Back: menu   ·   INFO: keys"</string>
-    <string name="show_settings">Show settings</string>
-    <string name="settings_basic">Basic</string>
-    <string name="settings_all">All</string>
-    <string name="settings_basic_desc">Only the most used settings. Choose All for the rest.</string>
-    <string name="settings_all_desc">Everything, including the advanced settings</string>
     <string name="off">Off</string>
     <string name="on">On</string>
     <string name="group_slideshow">Slideshow</string>
