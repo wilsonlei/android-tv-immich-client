@@ -10,15 +10,10 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateOffsetAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -417,13 +412,10 @@ fun DreamScreen(state: DreamState) {
 
         AnimatedContent(
             targetState = current, contentKey = { it?.id },
-            transitionSpec = { fadeIn(tween(900)) togetherWith fadeOut(tween(900)) },
+            transitionSpec = { slideshowFadeTransform() },
             label = "dream",
         ) { a ->
-            val vis by transition.animateFloat(transitionSpec = { tween(900) }, label = "vis") {
-                if (it == EnterExitState.Visible) 1f else 0f
-            }
-            if (a != null) DreamPhoto(a, active = a.id == current?.id, kenBurns = kenBurns, durationMs = seconds * 1000L + 2500, alpha = { vis })
+            if (a != null) DreamPhoto(a, active = a.id == current?.id, kenBurns = kenBurns, durationMs = seconds * 1000L)
         }
 
         val dreamMap = Settings.dreamMap.scale
@@ -478,8 +470,8 @@ private fun Clock(modifier: Modifier) {
  * its zoom, otherwise it snaps back during the crossfade).
  */
 @Composable
-private fun DreamPhoto(a: Asset, active: Boolean, kenBurns: Boolean, durationMs: Long, alpha: () -> Float) {
-    Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha(); compositingStrategy = CompositingStrategy.ModulateAlpha }, contentAlignment = Alignment.Center) {
+private fun DreamPhoto(a: Asset, active: Boolean, kenBurns: Boolean, durationMs: Long) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val fill = a.ratio in 1.45f..2.0f
         // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
         val progress = remember(a.id) { Animatable(0f) }

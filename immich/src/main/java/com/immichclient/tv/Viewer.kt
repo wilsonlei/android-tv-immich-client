@@ -9,11 +9,9 @@ import androidx.activity.compose.BackHandler
 import androidx.annotation.OptIn
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -346,31 +344,19 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
         val widthPx = with(density) { maxWidth.roundToPx() }
         val heightPx = with(density) { maxHeight.roundToPx() }
 
-        // Deliberately no fadeIn/fadeOut here: they set up a full-screen offscreen layer (8 MB) per page and HWUI retains
-        // those layers in its cache. The crossfade is in PhotoView (ModulateAlpha = alpha per draw call, without a layer);
-        // the slide/zoom only determines how long the old page continues to exist.
         AnimatedContent(
             targetState = state.index,
             transitionSpec = {
-                if (state.slideshow) {
-                    if (Settings.slideshowSlide) {
-                        slideInHorizontally(tween(400)) { it / 6 * state.direction.coerceIn(-1, 1) } togetherWith
-                            slideOutHorizontally(tween(400)) { -it / 6 * state.direction.coerceIn(-1, 1) }
-                    } else {
-                        fadeIn(tween(900)) togetherWith fadeOut(tween(900))
-                    }
+                if (state.slideshow && !Settings.slideshowSlide) {
+                    slideshowFadeTransform()
                 } else {
-                    slideInHorizontally(tween(260)) { it / 6 * state.direction.coerceIn(-1, 1) } togetherWith
-                        slideOutHorizontally(tween(260)) { -it / 6 * state.direction.coerceIn(-1, 1) }
+                    slideshowSlideTransform(state.direction)
                 }
             },
             label = "photo",
         ) { i ->
             val a = state.source.at(i)
-            val vis by transition.animateFloat(transitionSpec = { tween(if (state.direction == 0) 900 else 200) }, label = "vis") {
-                if (it == EnterExitState.Visible) 1f else 0f
-            }
-            if (a != null) PhotoView(a, state, active = i == state.index, alpha = { vis })
+            if (a != null) PhotoView(a, state, active = i == state.index)
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted) }
         }
 
@@ -379,18 +365,10 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
             targetState = if (current?.video == true) state.index else null,
             modifier = Modifier.fillMaxSize(),
             transitionSpec = {
-                val spec = if (initialState == null || targetState == null) {
-                    fadeIn(tween(200)) togetherWith fadeOut(tween(200))
-                } else if (state.slideshow) {
-                    if (Settings.slideshowSlide) {
-                        slideInHorizontally(tween(400)) { it * state.direction.coerceIn(-1, 1) } togetherWith
-                            slideOutHorizontally(tween(400)) { -it * state.direction.coerceIn(-1, 1) }
-                    } else {
-                        fadeIn(tween(600)) togetherWith fadeOut(tween(600))
-                    }
+                val spec = if (initialState == null || targetState == null || (state.slideshow && !Settings.slideshowSlide)) {
+                    slideshowFadeTransform()
                 } else {
-                    slideInHorizontally(tween(260)) { it * state.direction.coerceIn(-1, 1) } togetherWith
-                        slideOutHorizontally(tween(260)) { -it * state.direction.coerceIn(-1, 1) }
+                    slideshowSlideTransform(state.direction)
                 }
                 spec using null
             },
@@ -473,8 +451,8 @@ private fun SlideshowRing(state: ViewerState) {
 }
 
 @Composable
-private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, alpha: () -> Float) {
-    Box(Modifier.fillMaxSize().graphicsLayer { this.alpha = alpha(); compositingStrategy = CompositingStrategy.ModulateAlpha }, contentAlignment = Alignment.Center) {
+private fun PhotoView(a: Asset, state: ViewerState, active: Boolean) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
         if (a.video) {
             // Video background: thumbhash stretched full screen darkened
@@ -505,7 +483,7 @@ private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, alpha: () -
                 if (state.slideshow && Settings.kenBurns) {
                     if (active) {
                         progress.snapTo(0f)
-                        progress.animateTo(1f, tween((Settings.slideshowMs + 2000).toInt(), easing = LinearEasing))
+                        progress.animateTo(1f, tween(Settings.slideshowMs.toInt(), easing = LinearEasing))
                     }
                 } else if (progress.value != 0f) {
                     progress.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
