@@ -121,7 +121,7 @@ fun AlbumsScreen(state: AlbumsState, nav: Nav) {
                     a, if (a.id == state.lastFocus) Modifier.focusRequester(backFocus) else Modifier,
                     onFocus = { state.lastFocus = a.id },
                 ) {
-                    nav.open(Screen.Timeline(a.name, albumSubtitle(a), Filter(albumId = a.id), !a.oldestFirst, false, nav.scope))
+                    nav.open(Screen.Timeline(a.name, albumSubtitle(a), Filter(albumId = a.id), withMemories = false, startNewest = !a.oldestFirst, nav.scope))
                 }
             }
         }

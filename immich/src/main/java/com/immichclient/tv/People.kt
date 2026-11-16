@@ -96,7 +96,7 @@ fun PeopleScreen(state: PeopleState, nav: Nav) {
             items(list, key = { it.id }) { p ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Card(
-                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), true, false, nav.scope)) },
+                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), withMemories = false, startNewest = true, nav.scope)) },
                         modifier = (if (p.id == state.lastFocus) Modifier.focusRequester(backFocus) else Modifier)
                             .fillMaxWidth().aspectRatio(1f).onFocusChanged { if (it.isFocused) state.lastFocus = p.id },
                         shape = CardDefaults.shape(CircleShape),

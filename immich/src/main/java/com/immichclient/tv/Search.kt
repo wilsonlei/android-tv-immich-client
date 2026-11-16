@@ -319,7 +319,7 @@ private fun Suggestions(state: SearchState, nav: Nav, onSearch: (String) -> Unit
                 items(state.people.take(TOP_PEOPLE), key = { it.id }) { p ->
                     ChoiceChip(
                         selected = false,
-                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), true, false, nav.scope)) },
+                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), withMemories = false, startNewest = true, nav.scope)) },
                         leadingIcon = { FaceAvatar(p, 26.dp) }, text = p.name,
                     )
                 }

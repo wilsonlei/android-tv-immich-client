@@ -93,7 +93,7 @@ fun ExploreScreen(state: ExploreState, nav: Nav) {
                 }
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Card(
-                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), true, false, nav.scope)) },
+                        onClick = { nav.open(Screen.Timeline(p.name, personLabel, Filter(personId = p.id), withMemories = false, startNewest = true, nav.scope)) },
                         modifier = mod.fillMaxWidth().aspectRatio(1f).onFocusChanged { if (it.isFocused) state.lastFocus = "p" + p.id },
                         shape = CardDefaults.shape(CircleShape),
                         scale = CardDefaults.scale(focusedScale = 1.08f),
