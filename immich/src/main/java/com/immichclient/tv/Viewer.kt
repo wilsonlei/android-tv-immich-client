@@ -385,7 +385,7 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
             else { bar = true; if (ms > 0) { delay(ms.toLong()); bar = false } }
         }
         AnimatedVisibility(
-            (manualBar || (bar && !state.playingVideo)) && current != null, Modifier.align(Alignment.BottomStart),
+            (manualBar || (bar && (!state.playingVideo || Settings.barMs == 0))) && current != null, Modifier.align(Alignment.BottomStart),
             enter = fadeIn(), exit = fadeOut(),
         ) {
             if (current != null) BottomBar(current, state, withMap = current.lat != null && !current.video && mapScale > 0f)
