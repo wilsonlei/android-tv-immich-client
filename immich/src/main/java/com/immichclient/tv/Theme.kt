@@ -1,6 +1,9 @@
 package com.immichclient.tv
 
 import androidx.compose.foundation.Image
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -291,3 +294,48 @@ fun Modifier.keyScroll(scroll: androidx.compose.foundation.ScrollState): Modifie
 
 /** Dark gradient under text on a photo. */
 val bottomGradient = Brush.verticalGradient(0f to Color.Transparent, 0.45f to Color.Transparent, 1f to Color(0xD9000000))
+
+/** Full-screen photo with optional blurred thumbhash background and chained Ken Burns pan/zoom. */
+@Composable
+fun PhotoFrame(
+    a: Asset,
+    active: Boolean,
+    kenBurns: Boolean,
+    durationMs: Int,
+    kenBurnsTracker: KenBurnsTracker,
+) {
+    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
+        // Landscape photos near 16:9 crop to fill the screen during Ken Burns; others fit with bars/blur
+        val fill = kenBurns && a.ratio in 1.3f..2.1f
+        val scaleMode = if (fill) ContentScale.Crop else ContentScale.Fit
+
+        if (hash != null && (!fill && Settings.blurredBackground)) {
+            // Stretched thumbhash (32 px) darkened behind the photo as a free blurred background
+            Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
+            Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
+        }
+
+        // Ken Burns: pan/zoom chained from the previous photo's ending X/Y position
+        val progress = remember(a.id) { Animatable(0f) }
+        val motion = remember(a.id) { kenBurnsTracker.next() }
+        LaunchedEffect(a.id, kenBurns) {
+            if (kenBurns) {
+                // Only animate the active photo; the outgoing photo keeps its pose during crossfade
+                if (active) {
+                    progress.snapTo(0f)
+                    progress.animateTo(1f, tween(durationMs, easing = LinearEasing))
+                }
+            } else if (progress.value != 0f) {
+                // Ease back to neutral framing if Ken Burns or slideshow is turned off mid-animation
+                progress.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
+            }
+        }
+
+        val mod = Modifier.fillMaxSize().kenBurnsLayer(kenBurns, motion) { progress.value }
+        // Load the fast thumbnail underneath during manual browsing; skip during Ken Burns so it doesn't pop
+        if (!kenBurns) AsyncImage(imageRequest(Immich.thumb(a.id)), null, mod, contentScale = scaleMode)
+        // Full size image on top
+        AsyncImage(previewImage(a.id), null, mod, contentScale = scaleMode)
+    }
+}

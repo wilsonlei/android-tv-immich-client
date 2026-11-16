@@ -409,13 +409,14 @@ fun DreamScreen(state: DreamState) {
         val heightPx = with(density) { maxHeight.roundToPx() }
         val current = state.current
         val kenBurns = Settings.dreamKenBurns
+        val kenBurnsTracker = remember { KenBurnsTracker() }
 
         AnimatedContent(
             targetState = current, contentKey = { it?.id },
             transitionSpec = { slideshowFadeTransform() },
             label = "dream",
         ) { a ->
-            if (a != null) DreamPhoto(a, active = a.id == current?.id, kenBurns = kenBurns, durationMs = seconds * 1000L)
+            if (a != null) PhotoFrame(a, active = a.id == current?.id, kenBurns = kenBurns, durationMs = seconds * 1000, kenBurnsTracker = kenBurnsTracker)
         }
 
         val dreamMap = Settings.dreamMap.scale
@@ -464,36 +465,6 @@ private fun Clock(modifier: Modifier) {
     }
 }
 
-/**
- * Single photo: landscape photos around 3:2 fill the screen (cropped), the rest fits inside with thumbhash as
- * blurred background. Ken Burns: slow zoom with a gentle pan, only on the active photo (the outgoing one keeps
- * its zoom, otherwise it snaps back during the crossfade).
- */
-@Composable
-private fun DreamPhoto(a: Asset, active: Boolean, kenBurns: Boolean, durationMs: Long) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val fill = a.ratio in 1.45f..2.0f
-        // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
-        val progress = remember(a.id) { Animatable(0f) }
-        val mode = remember(a.id) { kotlin.math.abs(a.id.hashCode()) % 4 }
-        LaunchedEffect(a.id, kenBurns) {
-            if (kenBurns && active) {
-                progress.snapTo(0f)
-                progress.animateTo(1f, tween(durationMs.toInt(), easing = LinearEasing))
-            }
-        }
-        val mod = Modifier.fillMaxSize().kenBurnsLayer(kenBurns, mode) { progress.value }
-        val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
-        if (hash != null && !fill && Settings.blurredBackground) {
-            Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
-            Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-            if (!kenBurns) {
-                Image(hash, null, Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true), contentScale = ContentScale.FillBounds)
-            }
-        }
-        AsyncImage(previewImage(a.id), null, mod, contentScale = if (fill) ContentScale.Crop else ContentScale.Fit)
-    }
-}
 
 /**
  * The screensaver itself. Compose inside a DreamService: ComposeView needs a LifecycleOwner, SavedStateRegistryOwner,

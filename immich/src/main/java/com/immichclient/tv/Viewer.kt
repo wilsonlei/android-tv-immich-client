@@ -344,6 +344,7 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
         val widthPx = with(density) { maxWidth.roundToPx() }
         val heightPx = with(density) { maxHeight.roundToPx() }
 
+        val kenBurnsTracker = remember { KenBurnsTracker() }
         AnimatedContent(
             targetState = state.index,
             transitionSpec = {
@@ -356,7 +357,7 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
             label = "photo",
         ) { i ->
             val a = state.source.at(i)
-            if (a != null) PhotoView(a, state, active = i == state.index)
+            if (a != null) PhotoView(a, state, active = i == state.index, kenBurnsTracker = kenBurnsTracker)
             else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(stringResource(R.string.loading), style = MaterialTheme.typography.bodyLarge, color = AppColors.muted) }
         }
 
@@ -451,49 +452,24 @@ private fun SlideshowRing(state: ViewerState) {
 }
 
 @Composable
-private fun PhotoView(a: Asset, state: ViewerState, active: Boolean) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
-        if (a.video) {
+private fun PhotoView(a: Asset, state: ViewerState, active: Boolean, kenBurnsTracker: KenBurnsTracker) {
+    if (a.video) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
             // Video background: thumbhash stretched full screen darkened
             if (hash != null && Settings.blurredBackground) {
                 Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
                 Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
             }
-        } else {
-            val isKenBurns = state.slideshow && Settings.kenBurns
-            val fill = isKenBurns && a.ratio in 1.3f..2.1f
-            val scaleMode = if (fill) ContentScale.Crop else ContentScale.Fit
-
-            // 1) Thumbhash (blur layer)
-            if (hash != null && (!fill && Settings.blurredBackground)) {
-                // Background instead of black bars: thumbhash (32 px) stretched full screen = free 'blur', darkened
-                Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
-                Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-                if (!isKenBurns) {
-                    val shape = Modifier.aspectRatio(a.ratio.coerceIn(0.3f, 4f), matchHeightConstraintsFirst = true)
-                    Image(hash, null, shape, contentScale = ContentScale.FillBounds)
-                }
-            }
-
-            // macOS Photos-style Ken Burns: simultaneous pan and zoom with varied motion paths
-            val progress = remember(a.id) { Animatable(0f) }
-            val mode = remember(a.id) { kotlin.math.abs(a.id.hashCode()) % 4 }
-            LaunchedEffect(a.id, state.slideshow, Settings.kenBurns) {
-                if (state.slideshow && Settings.kenBurns) {
-                    if (active) {
-                        progress.snapTo(0f)
-                        progress.animateTo(1f, tween(Settings.slideshowMs.toInt(), easing = LinearEasing))
-                    }
-                } else if (progress.value != 0f) {
-                    progress.animateTo(0f, tween(500, easing = FastOutSlowInEasing))
-                }
-            }
-
-            val mod = Modifier.fillMaxSize().kenBurnsLayer(isKenBurns, mode) { progress.value }
-            if (!isKenBurns) AsyncImage(imageRequest(Immich.thumb(a.id)), null, mod, contentScale = scaleMode)
-            AsyncImage(previewImage(a.id), null, mod, contentScale = scaleMode)
         }
+    } else {
+        PhotoFrame(
+            a = a,
+            active = active,
+            kenBurns = state.slideshow && Settings.kenBurns,
+            durationMs = Settings.slideshowMs.toInt(),
+            kenBurnsTracker = kenBurnsTracker,
+        )
     }
 }
 
