@@ -129,7 +129,6 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         item { ChoicesRow(stringResource(R.string.order), stringResource(R.string.slideshow_order_desc), listOf(stringResource(R.string.by_date), stringResource(R.string.random)), if (Settings.slideshowRandom) 1 else 0) { Settings.slideshowRandom = it == 1 } }
         item { ChoicesRow(stringResource(R.string.videos), stringResource(R.string.slideshow_videos_desc), listOf(stringResource(R.string.play), stringResource(R.string.skip)), if (Settings.slideshowVideos) 0 else 1) { Settings.slideshowVideos = it == 0 } }
         item { ChoicesRow(stringResource(R.string.transition), stringResource(R.string.transition_desc), listOf(stringResource(R.string.fade), stringResource(R.string.slide)), if (Settings.slideshowSlide) 1 else 0) { Settings.slideshowSlide = it == 1 } }
-        toggleRow(R.string.slideshow_ring, R.string.slideshow_ring_desc, offOn, Settings.slideshowRing) { Settings.slideshowRing = it }
 
         // ---- Screensaver (item index dreamItemIndex() = the group header; do not change the order above without updating it) ----
         if (SCREENSAVER_ENABLED) {
@@ -161,7 +160,6 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
             item { ChoicesRow(stringResource(R.string.map_on_photo), stringResource(R.string.dream_map_desc), MapSize.entries.map { stringResource(it.label) }, Settings.dreamMap.ordinal) { Settings.dreamMap = MapSize.entries[it] } }
             if (all) toggleRow(R.string.ken_burns, R.string.dream_ken_burns_desc, offOn, Settings.dreamKenBurns) { Settings.dreamKenBurns = it }
             if (all) toggleRow(R.string.dream_info, R.string.dream_info_desc, offOn, Settings.dreamInfo) { Settings.dreamInfo = it }
-            if (all) toggleRow(R.string.dream_ring, R.string.dream_ring_desc, offOn, Settings.dreamRing) { Settings.dreamRing = it }
         }
 
         groupHeader(R.string.group_viewing)
@@ -258,8 +256,8 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
     }
 }
 
-/** Item index of the "Screensaver" group header in the list: header + Basic/All row + Slideshow group (1 + 3 or 6 rows). */
-private fun dreamItemIndex(all: Boolean) = 3 + if (all) 6 else 5
+/** Item index of the "Screensaver" group header in the list: header + Basic/All row + Slideshow group (1 + 4 or 5 rows). */
+private fun dreamItemIndex(all: Boolean) = 3 + if (all) 5 else 4
 /** Show the Screensaver group in settings (since 2.2; false hides the group again, the DreamService remains). */
 const val SCREENSAVER_ENABLED = true
 

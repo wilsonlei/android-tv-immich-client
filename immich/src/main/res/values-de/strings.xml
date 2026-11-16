@@ -467,10 +467,6 @@
     <string name="folders_no_access_desc">Dem API-Schlüssel fehlt die Berechtigung folder.read.</string>
     <string name="folders_load_failed">Ordner konnten nicht geladen werden</string>
     <string name="folder_empty">Dieser Ordner ist leer</string>
-    <string name="slideshow_ring">Fortschrittsring</string>
-    <string name="slideshow_ring_desc">Ring oben rechts, der sich bis zum nächsten Foto füllt</string>
-    <string name="dream_ring">Fortschrittsring</string>
-    <string name="dream_ring_desc">Kleiner Ring unten links, der sich bis zum nächsten Foto füllt</string>
     <string name="album_name">Albumname</string>
     <string name="album_name_desc">Zeigt, in welchem Album ein Foto ist, z. B. beim Ansehen einer Person</string>
     <string name="blurred_background">Unscharfer Hintergrund</string>

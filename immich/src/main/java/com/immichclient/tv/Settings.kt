@@ -53,8 +53,6 @@ object Settings {
     /** Play videos in the slideshow (otherwise skip). */
     var slideshowVideos by bool("slideshow_videos", true)
     var slideshowSlide by bool("slideshow_slide", false)
-    /** Progress ring in the top right during the slideshow. */
-    var slideshowRing by bool("slideshow_ring", true)
 
     // ---- Viewer ----
     var viewerMap by choice("viewer_map", MapSize.LARGE)
@@ -105,8 +103,6 @@ object Settings {
     var dreamKenBurns by bool("dream_ken_burns", true)
     /** date/place (and album name) bottom left */
     var dreamInfo by bool("dream_info", true)
-    /** small progress ring bottom left */
-    var dreamRing by bool("dream_ring", true)
     /** screensaver that was active before this app was set (to restore when turned "off"); per device */
     var dreamPrevious by text("dream_previous", "", perDevice = true)
 

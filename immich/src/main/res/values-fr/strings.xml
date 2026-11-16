@@ -473,10 +473,6 @@
     <string name="folders_no_access_desc">La clé API n\'a pas l\'autorisation folder.read.</string>
     <string name="folders_load_failed">Impossible de charger les dossiers</string>
     <string name="folder_empty">Ce dossier est vide</string>
-    <string name="slideshow_ring">Anneau de progression</string>
-    <string name="slideshow_ring_desc">Anneau en haut à droite qui se remplit jusqu\'à la photo suivante</string>
-    <string name="dream_ring">Anneau de progression</string>
-    <string name="dream_ring_desc">Petit anneau en bas à gauche qui se remplit jusqu\'à la photo suivante</string>
     <string name="album_name">Nom de l\'album</string>
     <string name="album_name_desc">Indique dans quel(s) album(s) se trouve une photo, p. ex. en regardant une personne</string>
     <string name="blurred_background">Arrière-plan flou</string>

@@ -473,10 +473,6 @@
     <string name="folders_no_access_desc">A la clave API le falta el permiso folder.read.</string>
     <string name="folders_load_failed">No se pudieron cargar las carpetas</string>
     <string name="folder_empty">Esta carpeta está vacía</string>
-    <string name="slideshow_ring">Anillo de progreso</string>
-    <string name="slideshow_ring_desc">Anillo arriba a la derecha que se llena hasta la siguiente foto</string>
-    <string name="dream_ring">Anillo de progreso</string>
-    <string name="dream_ring_desc">Pequeño anillo abajo a la izquierda que se llena hasta la siguiente foto</string>
     <string name="album_name">Nombre del álbum</string>
     <string name="album_name_desc">Muestra en qué álbum(es) está una foto, p. ej. al ver una persona</string>
     <string name="blurred_background">Fondo desenfocado</string>

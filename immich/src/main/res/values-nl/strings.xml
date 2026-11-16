@@ -467,10 +467,6 @@
     <string name="folders_no_access_desc">De API-sleutel mist het recht folder.read.</string>
     <string name="folders_load_failed">Mappen niet geladen</string>
     <string name="folder_empty">Deze map is leeg</string>
-    <string name="slideshow_ring">Voortgangsring</string>
-    <string name="slideshow_ring_desc">Ringetje rechtsboven dat volloopt tot de volgende foto</string>
-    <string name="dream_ring">Voortgangsringetje</string>
-    <string name="dream_ring_desc">Ringetje linksonder dat volloopt tot de volgende foto</string>
     <string name="album_name">Albumnaam</string>
     <string name="album_name_desc">Laat zien in welk(e) album(s) een foto zit, bijv. als je een persoon bekijkt</string>
     <string name="blurred_background">Wazige achtergrond</string>

@@ -66,7 +66,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
@@ -423,20 +422,8 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
                 Spacer(Modifier.width(5.dp))
                 Text(stringResource(if (lastBadge) R.string.slideshow else R.string.slideshow_paused), style = MaterialTheme.typography.labelLarge, color = Color.White, maxLines = 1)
             }
-            AnimatedVisibility(state.slideshow && Settings.slideshowRing, enter = fadeIn(), exit = fadeOut()) { SlideshowRing(state) }
         }
     }
-}
-
-/** Ring that fills up over the slideshow duration and restarts for each photo; pauses while a video is playing. */
-@Composable
-private fun SlideshowRing(state: ViewerState) {
-    val part = remember { Animatable(0f) }
-    LaunchedEffect(state.index, state.playingVideo) {
-        part.snapTo(0f)
-        if (!state.playingVideo) part.animateTo(1f, tween(Settings.slideshowMs.toInt(), easing = LinearEasing))
-    }
-    ProgressRing({ part.value })
 }
 
 @Composable
@@ -488,26 +475,13 @@ private fun VideoView(a: Asset, state: ViewerState, player: ExoPlayer) {
 
 @Composable
 private fun BottomBar(a: Asset, state: ViewerState, withMap: Boolean) {
-    Box(Modifier.fillMaxWidth().height(170.dp).background(Brush.verticalGradient(listOf(Color.Transparent, Color(0xCC000000))))) {
-        Column(Modifier.align(Alignment.BottomStart).padding(start = 40.dp, bottom = 28.dp)) {
-            // Counter near the title, on the left: map is at bottom-right (it overlapped the counter)
-            Row(verticalAlignment = Alignment.Bottom) {
-                state.title?.let { Text(it, style = MaterialTheme.typography.labelLarge, color = AppColors.primary, modifier = Modifier.padding(end = 12.dp)) }
-                if (Settings.counter) Text("${state.index + 1} / ${Language.number(state.source.count)}", style = MaterialTheme.typography.labelMedium, color = Color(0xAAFFFFFF), modifier = Modifier.padding(bottom = 1.dp))
-            }
-            Text(dayLong(a.date), style = MaterialTheme.typography.titleLarge, color = Color.White)
-            val place = listOfNotNull(a.city, a.country).joinToString(", ")
-            // With map (photo with GPS), the location is shown near the dot
-            if (place.isNotEmpty() && !withMap) Text(place, style = MaterialTheme.typography.bodyLarge, color = Color(0xDDFFFFFF))
-            // Album(s) containing the photo; exclude the album currently being viewed
-            if (Settings.albumName) {
-                val names = albumNames(a.id).filter { it != state.title }
-                if (names.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.PhotoLibrary, null, Modifier.size(16.dp), tint = Color(0xBBFFFFFF))
-                    Text("  " + albumLine(names), style = MaterialTheme.typography.bodyMedium, color = Color(0xBBFFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                }
-            }
-        }
+    Box(Modifier.padding(start = 40.dp, bottom = 28.dp)) {
+        PhotoInfoBar(
+            a = a,
+            withMap = withMap,
+            title = state.title,
+            counter = if (Settings.counter) "${state.index + 1} / ${Language.number(state.source.count)}" else null,
+        )
     }
 }
 

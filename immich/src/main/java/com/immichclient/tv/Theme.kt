@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,8 +36,10 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
@@ -46,6 +50,7 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -250,18 +255,6 @@ fun ChoiceChip(
     )
 }
 
-/** Ring that fills up (slideshow, screensaver): [progress] 0..1. */
-@Composable
-fun ProgressRing(progress: () -> Float, modifier: Modifier = Modifier) {
-    androidx.compose.foundation.Canvas(modifier.size(22.dp)) {
-        val strokeWidth = 2.2.dp.toPx()
-        // dark border underneath: visible even on a bright photo
-        drawCircle(Color(0x59000000), style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth * 2.4f))
-        drawCircle(Color(0x38FFFFFF), style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth))
-        drawArc(Color(0xD9FFFFFF), -90f, 360f * progress(), false, style = androidx.compose.ui.graphics.drawscope.Stroke(strokeWidth, cap = androidx.compose.ui.graphics.StrokeCap.Round))
-    }
-}
-
 /** Round face photo of a person. */
 @Composable
 fun FaceAvatar(person: Person, size: Dp) {
@@ -337,5 +330,38 @@ fun PhotoFrame(
         if (!kenBurns) AsyncImage(imageRequest(Immich.thumb(a.id)), null, mod, contentScale = scaleMode)
         // Full size image on top
         AsyncImage(previewImage(a.id), null, mod, contentScale = scaleMode)
+    }
+}
+
+private val PHOTO_INFO_SHADOW = Shadow(Color(0xD9000000), Offset(0f, 2f), 10f)
+
+/**
+ * Shared date, place (when not shown on the map), and album(s) info block for both the viewer/slideshow
+ * bottom bar and the screensaver. Optional [title] and [counter] adapt it for the viewer.
+ */
+@Composable
+fun PhotoInfoBar(
+    a: Asset,
+    withMap: Boolean,
+    title: String? = null,
+    counter: String? = null,
+) {
+    Column {
+        if (title != null || counter != null) Row(verticalAlignment = Alignment.Bottom) {
+            title?.let { Text(it, style = MaterialTheme.typography.labelLarge.copy(shadow = PHOTO_INFO_SHADOW), color = AppColors.primary, modifier = Modifier.padding(end = 12.dp)) }
+            counter?.let { Text(it, style = MaterialTheme.typography.labelMedium.copy(shadow = PHOTO_INFO_SHADOW), color = Color(0xAAFFFFFF), modifier = Modifier.padding(bottom = 1.dp)) }
+        }
+        Text(dayLong(a.date), style = MaterialTheme.typography.titleLarge.copy(shadow = PHOTO_INFO_SHADOW), color = Color.White, maxLines = 1)
+        val place = listOfNotNull(a.city, a.country).joinToString(", ")
+        // With map (photo with GPS), the location is shown near the dot
+        if (place.isNotEmpty() && !withMap) Text(place, style = MaterialTheme.typography.bodyLarge.copy(shadow = PHOTO_INFO_SHADOW), color = Color(0xDDFFFFFF), maxLines = 1)
+        // Album(s) containing the photo; exclude the album currently being viewed
+        if (Settings.albumName) {
+            val names = albumNames(a.id).filter { it != title }
+            if (names.isNotEmpty()) Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.PhotoLibrary, null, Modifier.size(16.dp), tint = Color(0xBBFFFFFF))
+                Text("  " + albumLine(names), style = MaterialTheme.typography.bodyMedium.copy(shadow = PHOTO_INFO_SHADOW), color = Color(0xBBFFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
     }
 }

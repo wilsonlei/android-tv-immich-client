@@ -485,10 +485,6 @@
     <string name="folders_no_access_desc">The API key is missing the permission folder.read.</string>
     <string name="folders_load_failed">Couldn\'t load folders</string>
     <string name="folder_empty">This folder is empty</string>
-    <string name="slideshow_ring">Progress ring</string>
-    <string name="slideshow_ring_desc">Ring at the top right that fills until the next photo</string>
-    <string name="dream_ring">Progress ring</string>
-    <string name="dream_ring_desc">Small ring at the bottom left that fills until the next photo</string>
     <string name="album_name">Album name</string>
     <string name="album_name_desc">Show which album(s) a photo is in, e.g. when viewing a person</string>
     <string name="blurred_background">Blurred background</string>

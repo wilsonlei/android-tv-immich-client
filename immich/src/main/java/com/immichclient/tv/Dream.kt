@@ -367,22 +367,14 @@ fun DreamScreen(state: DreamState) {
         if (dreamMap > 0f) CountryMapOverlay(target = current?.takeIf { it.lat != null && it.lon != null }, widthPx = widthPx, heightPx = heightPx, sizeScale = dreamMap)
 
         if (Settings.dreamClock) Clock(Modifier.align(Alignment.TopStart).then(shift).padding(start = 48.dp, top = 36.dp))
+        if (state.errorIcon) Icon(Icons.Filled.CloudOff, null, Modifier.align(Alignment.TopEnd).then(shift).padding(end = 48.dp, top = 36.dp).size(20.dp), tint = Color(0xB3FFFFFF))
 
-        // Bottom-left: ring (time until next photo) + date and location/source
-        if (current != null) Row(Modifier.align(Alignment.BottomStart).then(shift).padding(start = 48.dp, bottom = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-            val ring = remember { Animatable(0f) }
-            LaunchedEffect(state.round) { ring.snapTo(0f); if (state.round > 0) ring.animateTo(1f, tween(seconds * 1000, easing = LinearEasing)) }
-            if (Settings.dreamRing) ProgressRing({ ring.value }, Modifier.size(22.dp))
-            if (state.errorIcon) Icon(Icons.Filled.CloudOff, null, Modifier.padding(start = if (Settings.dreamRing) 10.dp else 0.dp).size(20.dp), tint = Color(0xB3FFFFFF))
-            if (Settings.dreamInfo) Column(Modifier.padding(start = if (Settings.dreamRing || state.errorIcon) 16.dp else 0.dp)) {
-                Text(current.date.format(DateFormats.dayLong).replaceFirstChar { it.titlecase(Language.locale) }, style = TextStyle(fontFamily = Overpass, fontSize = 18.sp, color = Color.White, shadow = SHADOW), maxLines = 1)
-                // With map, the place is shown near the dot; otherwise here
-                val place = listOfNotNull(current.city, current.country).joinToString(", ").takeIf { it.isNotEmpty() && !(Settings.dreamMap != MapSize.OFF && current.lat != null) }
-                // Albums containing the photo
-                val albums = albumNames(current.id).takeIf { it.isNotEmpty() }?.let(::albumLine)
-                val line = listOfNotNull(place, albums).joinToString("  ·  ")
-                if (line.isNotEmpty()) Text(line, style = TextStyle(fontFamily = Overpass, fontSize = 15.sp, color = Color(0xD9FFFFFF), shadow = SHADOW), maxLines = 1)
-            }
+        // Bottom-left: date and location/albums
+        if (current != null && Settings.dreamInfo) Box(Modifier.align(Alignment.BottomStart).then(shift).padding(start = 48.dp, bottom = 40.dp)) {
+            PhotoInfoBar(
+                a = current,
+                withMap = Settings.dreamMap != MapSize.OFF && current.lat != null,
+            )
         }
 
         if (current == null) state.message?.let { m ->
