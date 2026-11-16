@@ -104,9 +104,9 @@
         <item>comida</item>
     </string-array>
     <string name="key_space">espacio</string>
+    <string name="key_backspace">retroceso</string>
     <string name="key_clear">borrar</string>
-    <string name="action_search">Buscar</string>
-    <string name="action_done">Listo</string>
+    <string name="key_enter">entrar</string>
     <string name="loading_failed">Error al cargar: %s</string>
 
     <string name="albums">Álbumes</string>

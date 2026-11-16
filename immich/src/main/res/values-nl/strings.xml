@@ -100,9 +100,9 @@
         <item>eten</item>
     </string-array>
     <string name="key_space">spatie</string>
+    <string name="key_backspace">backspace</string>
     <string name="key_clear">wissen</string>
-    <string name="action_search">Zoeken</string>
-    <string name="action_done">Klaar</string>
+    <string name="key_enter">enter</string>
     <string name="loading_failed">Laden mislukt: %s</string>
 
     <string name="albums">Albums</string>

@@ -110,9 +110,9 @@
         <item>food</item>
     </string-array>
     <string name="key_space">space</string>
+    <string name="key_backspace">backspace</string>
     <string name="key_clear">clear</string>
-    <string name="action_search">Search</string>
-    <string name="action_done">Done</string>
+    <string name="key_enter">enter</string>
     <string name="loading_failed">Loading failed: %s</string>
 
     <!-- Albums -->

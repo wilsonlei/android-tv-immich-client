@@ -1,5 +1,6 @@
 package com.immichclient.tv
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -10,18 +11,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
+import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -42,8 +53,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -58,7 +74,9 @@ import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.FilterChip
 import androidx.tv.material3.FilterChipDefaults
 import androidx.tv.material3.Icon
+import androidx.tv.material3.LocalContentColor
 import androidx.tv.material3.MaterialTheme
+import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
@@ -362,6 +380,95 @@ fun PhotoInfoBar(
                 Icon(Icons.Filled.PhotoLibrary, null, Modifier.size(16.dp), tint = Color(0xBBFFFFFF))
                 Text("  " + albumLine(names), style = MaterialTheme.typography.bodyMedium.copy(shadow = PHOTO_INFO_SHADOW), color = Color(0xBBFFFFFF), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+    }
+}
+
+/**
+ * Custom on-screen keyboard: Google TV's default IME is the phone bridge ("use keyboard on your
+ * mobile device"), not something usable with a remote. Only a-z and digits (smart search and album
+ * filter are accent-insensitive); a physical keyboard types directly, including accents.
+ * [live] receives every change (e.g. filtering albums while typing).
+ */
+@Composable
+fun TextInputOverlay(title: String, initial: String, live: ((String) -> Unit)? = null, close: () -> Unit, onDone: (String) -> Unit) {
+    var text by remember { mutableStateOf(initial) }
+    val firstKey = remember { FocusRequester() }
+    fun set(t: String) { text = t; live?.invoke(t) }
+    BackHandler { close() }
+    Box(
+        Modifier.fillMaxSize().background(Color(0xF00A0A0A)).trapFocus().onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val n = e.nativeKeyEvent
+            when {
+                n.keyCode == android.view.KeyEvent.KEYCODE_DEL -> { set(text.dropLast(1)); true }
+                n.keyCode == android.view.KeyEvent.KEYCODE_SEARCH -> { onDone(text); true }
+                n.unicodeChar > 0 && n.keyCode !in setOf(android.view.KeyEvent.KEYCODE_DPAD_CENTER, android.view.KeyEvent.KEYCODE_ENTER) -> {
+                    set(text + n.unicodeChar.toChar()); true
+                }
+                else -> false
+            }
+        },
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Column(Modifier.padding(top = 56.dp).width(760.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Text(title, style = MaterialTheme.typography.headlineSmall)
+            Row(
+                Modifier.fillMaxWidth().height(56.dp).background(AppColors.surfaceHigh, RoundedCornerShape(28.dp))
+                    .border(2.dp, AppColors.primary, RoundedCornerShape(28.dp)).padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Filled.Search, null, tint = AppColors.muted)
+                Spacer(Modifier.width(14.dp))
+                Text(text, style = MaterialTheme.typography.titleLarge, maxLines = 1)
+                Box(Modifier.width(2.dp).height(26.dp).background(AppColors.primary))
+            }
+            Spacer(Modifier.height(6.dp))
+            val keyW = 56.dp
+            Row(Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ("abcdefghijklmnopqrstuvwxyz".chunked(10) + "1234567890").forEachIndexed { ri, row ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            row.forEachIndexed { ci, c ->
+                                KeyboardKey(Modifier.width(keyW).then(if (ri == 0 && ci == 0) Modifier.focusRequester(firstKey) else Modifier), label = c.toString()) { set(text + c) }
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.width(16.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    KeyboardKey(Modifier.width(keyW * 2), icon = Icons.Filled.SpaceBar, contentDescription = stringResource(R.string.key_space)) { set("$text ") }
+                    KeyboardKey(Modifier.width(keyW * 2), icon = Icons.AutoMirrored.Filled.Backspace, contentDescription = stringResource(R.string.key_backspace)) { set(text.dropLast(1)) }
+                    KeyboardKey(Modifier.width(keyW * 2), icon = Icons.Filled.Cancel, contentDescription = stringResource(R.string.key_clear)) { set("") }
+                    KeyboardKey(Modifier.width(keyW * 2), icon = Icons.AutoMirrored.Filled.KeyboardReturn, contentDescription = stringResource(R.string.key_enter), primary = true) { onDone(text) }
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) { delay(40); runCatching { firstKey.requestFocus() } }
+}
+
+@Composable
+private fun KeyboardKey(
+    modifier: Modifier,
+    label: String? = null,
+    icon: ImageVector? = null,
+    contentDescription: String? = null,
+    primary: Boolean = false,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick, modifier = modifier.height(52.dp),
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(10.dp)),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.08f),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = if (primary) AppColors.primary.copy(alpha = 0.25f) else AppColors.surface, contentColor = AppColors.text,
+            focusedContainerColor = AppColors.primary, focusedContentColor = AppColors.onPrimary,
+        ),
+    ) {
+        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            if (icon != null) Icon(icon, contentDescription, Modifier.size(22.dp), tint = LocalContentColor.current)
+            else if (label != null) Text(label, style = MaterialTheme.typography.titleMedium, color = LocalContentColor.current)
         }
     }
 }

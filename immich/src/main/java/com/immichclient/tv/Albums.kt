@@ -138,7 +138,7 @@ fun AlbumsScreen(state: AlbumsState, nav: Nav) {
         delay(30)
         if (state.lastFocus == null || runCatching { backFocus.requestFocus() }.isFailure) runCatching { first.requestFocus() }
     }
-    if (searchOpen) TextInputOverlay(stringResource(R.string.find_album), state.query, live = { state.query = it }, action = stringResource(R.string.action_done), close = { searchOpen = false }) {
+    if (searchOpen) TextInputOverlay(stringResource(R.string.find_album), state.query, live = { state.query = it }, close = { searchOpen = false }) {
         state.query = it; searchOpen = false
     }
 }

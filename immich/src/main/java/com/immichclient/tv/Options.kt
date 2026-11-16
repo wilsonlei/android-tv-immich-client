@@ -243,7 +243,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
         item { InfoRow(stringResource(R.string.map), stringResource(R.string.map_attribution, SAT_ATTRIBUTION)) }
         item { Text(stringResource(R.string.unofficial_long), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(horizontal = 18.dp, vertical = 6.dp)) }
     }
-    if (greetingInput) TextInputOverlay(stringResource(R.string.greeting), Settings.greetingText, action = stringResource(R.string.action_done), close = { greetingInput = false }) {
+    if (greetingInput) TextInputOverlay(stringResource(R.string.greeting), Settings.greetingText, close = { greetingInput = false }) {
         Settings.greetingText = it; greetingInput = false
     }
 }

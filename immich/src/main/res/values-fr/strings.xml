@@ -104,9 +104,9 @@
         <item>repas</item>
     </string-array>
     <string name="key_space">espace</string>
+    <string name="key_backspace">retour</string>
     <string name="key_clear">effacer</string>
-    <string name="action_search">Rechercher</string>
-    <string name="action_done">Terminé</string>
+    <string name="key_enter">entrée</string>
     <string name="loading_failed">Le chargement a échoué : %s</string>
 
     <string name="albums">Albums</string>
