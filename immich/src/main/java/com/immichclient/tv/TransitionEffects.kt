@@ -36,9 +36,9 @@ fun Modifier.kenBurnsLayer(enabled: Boolean, mode: Int, progress: () -> Float): 
     translationY = panYVal * size.height
 }
 
-/** Crossfade transition transform for slideshow and screensaver. */
+/** Crossfade transition transform for slideshow and screensaver (fades incoming in, then fades outgoing out). */
 fun slideshowFadeTransform(durationMs: Int = 1000): ContentTransform =
-    fadeIn(tween(durationMs)) togetherWith fadeOut(tween(durationMs))
+    fadeIn(tween(durationMs)) togetherWith fadeOut(tween(durationMs, delayMillis = durationMs / 2))
 
 /** Horizontal slide transition transform for photo/video navigation and slideshow slide mode. */
 fun slideshowSlideTransform(direction: Int, durationMs: Int = 250): ContentTransform {
