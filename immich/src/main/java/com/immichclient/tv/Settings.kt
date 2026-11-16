@@ -15,7 +15,7 @@ import kotlin.reflect.KProperty
  * Default values = behavior of version 1.1, so an update doesn't change anything for existing users.
  */
 object Settings {
-    private const val PREFS = "instellingen"
+    private const val PREFS = "settings"
     private var prefs: SharedPreferences? = null
     private var suffix = ""
     private val all = ArrayList<Setting<*>>()
@@ -47,77 +47,77 @@ object Settings {
     // ---- Slideshow ----
     /** Slowly zoom in during the slideshow. */
     var kenBurns by bool("ken_burns", true)
-    var slideshowSeconds by int("dia_s", 6)
-    val SLIDESHOW_TIMES = listOf(3, 5, 6, 8, 10, 15, 20)
-    var slideshowRandom by bool("dia_willekeurig", false)
+    var slideshowSeconds by int("slideshow_s", 6)
+    val SLIDESHOW_TIMES = (3..30).toList()
+    var slideshowRandom by bool("slideshow_random", false)
     /** Play videos in the slideshow (otherwise skip). */
-    var slideshowVideos by bool("dia_videos", true)
-    var slideshowSlide by bool("dia_schuiven", false)
+    var slideshowVideos by bool("slideshow_videos", true)
+    var slideshowSlide by bool("slideshow_slide", false)
     /** Progress ring in the top right during the slideshow. */
-    var slideshowRing by bool("dia_ring", true)
+    var slideshowRing by bool("slideshow_ring", true)
 
     // ---- Viewer ----
-    var viewerMap by choice("viewer_kaart", MapSize.LARGE)
+    var viewerMap by choice("viewer_map", MapSize.LARGE)
     /** Hide the date/place bar after ... ms (0 = always show, -1 = off). */
-    var barMs by int("balk_ms", 3500)
-    val BAR_TIMES = listOf(-1, 2000, 3500, 6000, 10000, 0)
-    var counter by bool("teller", true)
+    var barMs by int("bar_ms", 4000)
+    val BAR_TIMES = listOf(-1, 0) + (2..20).map { it * 1000 }
+    var counter by bool("counter", true)
     /** album(s) of the photo in the bar and info panel (useful when coming from a person or the timeline) */
-    var albumName by bool("album_naam", true)
+    var albumName by bool("album_name", true)
     /** blurred thumbhash background around photos/videos that don't fill the screen (viewer + screensaver); off = black */
-    var blurredBackground by bool("wazige_achtergrond", true)
+    var blurredBackground by bool("blurred_background", true)
 
     // ---- Timeline ----
-    var rowSize by choice("rij", RowSize.NORMAL)
-    var newestFirst by bool("nieuwste_eerst", true)
+    var rowSize by choice("row_size", RowSize.NORMAL)
+    var newestFirst by bool("newest_first", true)
     var partners by bool("partners", true)
-    var memories by bool("herinneringen", true)
+    var memories by bool("memories", true)
     var start by choice("start", Section.PHOTOS)
-    var greeting by choice("groet", Greeting.OFF)
-    var greetingText by text("groet_tekst", "")
+    var greeting by choice("greeting", Greeting.OFF)
+    var greetingText by text("greeting_text", "")
 
     // ---- Map ----
-    var mapStart by choice("kaart_start", MapStart.WORLD)
+    var mapStart by choice("map_start", MapStart.WORLD)
     var cluster by choice("cluster", ClusterLevel.NORMAL)
-    var mapStyle by choice("kaart_stijl", MapStyle.DARK)
+    var mapStyle by choice("map_style", MapStyle.DARK)
     /** last viewed place: "lat,lon,zoom" (for MapStart.LAST) */
-    var mapLast by text("kaart_laatst", "")
+    var mapLast by text("map_last", "")
 
     // ---- Settings screen ----
     /** show all settings (otherwise only basic); per device */
-    var allSettings by bool("alle_instellingen", false, perDevice = true)
+    var allSettings by bool("all_settings", false, perDevice = true)
 
     // ---- Appearance ----
     var accent by choice("accent", Accent.BLUE)
 
     // ---- Screensaver (DreamService, see Dream.kt) ----
-    var dreamSource by choice("dream_bron", DreamSource.ALL)
+    var dreamSource by choice("dream_source", DreamSource.ALL)
     /** chosen album IDs, comma-separated (up to 2.7.2 always one) */
     var dreamAlbum by text("dream_album", "")
     /** names matching [dreamAlbum], newline-separated (same order) */
-    var dreamAlbumName by text("dream_album_naam", "")
+    var dreamAlbumName by text("dream_album_name", "")
     /** for a source album/favorites: if the photo is also in another album, show that name instead of the source */
-    var dreamOtherAlbum by bool("dream_ander_album", true)
+    var dreamOtherAlbum by bool("dream_other_album", true)
     /** chosen people (comma-separated; up to 2.7.2 always one) and their names (newlines), like albums */
-    var dreamPerson by text("dream_persoon", "")
-    var dreamPersonName by text("dream_persoon_naam", "")
+    var dreamPerson by text("dream_person", "")
+    var dreamPersonName by text("dream_person_name", "")
     /** only photos from this year onward (0 = all years) */
-    var dreamFrom by int("dream_vanaf", 0)
-    var dreamOrder by choice("dream_volgorde", DreamOrder.RANDOM)
+    var dreamFrom by int("dream_from", 0)
+    var dreamOrder by choice("dream_order", DreamOrder.RANDOM)
     /** for a fixed order: where the screensaver left off ("source-key<TAB>date"), so it resumes there */
-    var dreamPosition by text("dream_stand", "")
+    var dreamPosition by text("dream_position", "")
     var dreamSeconds by int("dream_s", 15)
-    val DREAM_TIMES = listOf(5, 8, 10, 15, 20, 30, 45, 60, 120)
-    var dreamClock by bool("dream_klok", true)
-    /** country map bottom right: off / small / large (up to 2.7.2 a toggle "dream_kaart", see [load]) */
-    var dreamMap by choice("dream_kaart_maat", MapSize.LARGE)
+    val DREAM_TIMES = (3..20).toList()
+    var dreamClock by bool("dream_clock", true)
+    /** country map bottom right: off / small / large (up to 2.7.2 a toggle "dream_map", see [load]) */
+    var dreamMap by choice("dream_map_size", MapSize.LARGE)
     var dreamKenBurns by bool("dream_ken_burns", true)
     /** date/place (and album name) bottom left */
     var dreamInfo by bool("dream_info", true)
     /** small progress ring bottom left */
     var dreamRing by bool("dream_ring", true)
     /** screensaver that was active before this app was set (to restore when turned "off"); per device */
-    var dreamPrevious by text("dream_vorige", "", perDevice = true)
+    var dreamPrevious by text("dream_previous", "", perDevice = true)
 
     /** Read prefs for this account; [viewer] = profile with its own account, otherwise the general account. */
     fun load(c: Context, viewer: String?) {
@@ -127,9 +127,12 @@ object Settings {
         for (i in all) i.load(p)
         // up to 1.2 the start view "country with most photos" had a different name; that's the only saved value not
         // in MapStart anymore, and it would otherwise silently fall back to the default (whole world)
-        p.getString("kaart_start$suffix", null)?.let { old -> if (MapStart.entries.none { it.name == old }) mapStart = MapStart.MAIN_COUNTRY }
+        p.getString("map_start$suffix", null)?.let { old -> if (MapStart.entries.none { it.name == old }) mapStart = MapStart.MAIN_COUNTRY }
         // up to 2.7.2 the screensaver map was only on/off
-        if (!p.contains("dream_kaart_maat$suffix") && !p.getBoolean("dream_kaart$suffix", true)) dreamMap = MapSize.OFF
+        if (!p.contains("dream_map_size$suffix") && !p.getBoolean("dream_map$suffix", true)) dreamMap = MapSize.OFF
+        slideshowSeconds = slideshowSeconds.coerceIn(SLIDESHOW_TIMES.first(), SLIDESHOW_TIMES.last())
+        dreamSeconds = dreamSeconds.coerceIn(DREAM_TIMES.first(), DREAM_TIMES.last())
+        if (barMs !in BAR_TIMES) barMs = 4000
     }
 
     val dreamAlbums get() = listFrom(dreamAlbum)

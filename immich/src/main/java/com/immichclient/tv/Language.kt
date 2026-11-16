@@ -15,7 +15,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * App language, independent of the system language. The choice is stored in prefs ("instellingen"/"taal", per device)
+ * App language, independent of the system language. The choice is stored in prefs ("settings"/"language", per device)
  * and applied via a Context with its own Configuration ([wrap], in MainActivity.attachBaseContext); after a switch,
  * `recreate()`. For text outside Compose (pairing page, error messages on the server thread, row headers) there is [ctx]:
  * the application context in the chosen language. Date/time patterns and number formatting follow the chosen [locale].
@@ -26,8 +26,8 @@ import java.util.Locale
 object Language {
     /** Supported languages (ISO 639-1), in the order of the picker screen. */
     val LANGUAGES = listOf("en", "nl", "de", "fr", "es")
-    private const val PREFS = "instellingen"
-    private const val KEY = "taal"
+    private const val PREFS = "settings"
+    private const val KEY = "language"
 
     /** Name of the language in that language itself (for the picker screen and settings). */
     fun name(code: String) = when (code) {

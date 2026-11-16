@@ -171,7 +171,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
                 ChoicesRow(stringResource(R.string.order), stringResource(R.string.dream_order_desc), DreamOrder.entries.map { stringResource(it.label) }, Settings.dreamOrder.ordinal) { Settings.dreamOrder = DreamOrder.entries[it] }
             }
             item {
-                val labels = Settings.DREAM_TIMES.map { if (it >= 60) stringResource(R.string.minutes, it / 60) else stringResource(R.string.seconds, it) }
+                val labels = Settings.DREAM_TIMES.map { stringResource(R.string.seconds, it) }
                 ChoicesRow(stringResource(R.string.time_per_photo), stringResource(R.string.dream_time_desc), labels, Settings.DREAM_TIMES.indexOf(Settings.dreamSeconds).coerceAtLeast(0)) { Settings.dreamSeconds = Settings.DREAM_TIMES[it] }
             }
             toggleRow(R.string.dream_clock, R.string.dream_clock_desc, offOn, Settings.dreamClock) { Settings.dreamClock = it }
@@ -190,7 +190,7 @@ fun SettingsScreen(reconnect: () -> Unit, disconnected: () -> Unit) {
                 when (it) {
                     -1 -> off
                     0 -> always
-                    else -> stringResource(R.string.seconds_str, (it / 1000.0).let { s -> if (s % 1 == 0.0) "%.0f".format(Language.locale, s) else "%.1f".format(Language.locale, s) })
+                    else -> stringResource(R.string.seconds, it / 1000)
                 }
             }
             ChoicesRow(stringResource(R.string.date_and_place), stringResource(R.string.date_and_place_desc), labels, Settings.BAR_TIMES.indexOf(Settings.barMs).coerceAtLeast(0)) { Settings.barMs = Settings.BAR_TIMES[it] }

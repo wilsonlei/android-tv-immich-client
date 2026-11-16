@@ -116,8 +116,8 @@ object Permissions {
     /** After startup: open overview if a permission is missing that hasn't been reported yet (per account). */
     fun notifyNew(c: Context) {
         val miss = missing ?: return
-        val p = c.getSharedPreferences("instellingen", Context.MODE_PRIVATE)
-        val key = "rechten_gemeld" + (Immich.viewer?.let { "_$it" } ?: "")
+        val p = c.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        val key = "permissions_reported" + (Immich.viewer?.let { "_$it" } ?: "")
         val now = miss.sorted().joinToString(",")
         val prev = p.getString(key, "").orEmpty()
         if (now != prev) p.edit().putString(key, now).apply()
