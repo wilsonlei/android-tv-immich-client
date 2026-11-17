@@ -428,13 +428,7 @@ fun Viewer(state: ViewerState, onMap: ((Asset) -> Unit)? = null, close: (Asset?)
 
 @Composable
 private fun VideoView(a: Asset, state: ViewerState, player: ExoPlayer) {
-    Box(Modifier.fillMaxSize()) {
-        val hash = remember(a.thumbhash) { a.thumbhash?.let { ThumbHash.bitmap(it) } }
-        // Video background: thumbhash stretched full screen darkened
-        if (hash != null && Settings.blurredBackground) {
-            Image(hash, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.7f)
-            Box(Modifier.fillMaxSize().background(Color(0x8C000000)))
-        }
+    Box(Modifier.fillMaxSize().background(Color.Black)) {
         key(a.id) {
             AndroidView(
                 factory = { c ->
